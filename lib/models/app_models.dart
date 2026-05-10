@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 enum AppThemeMode { defaultBlue, chameleon, lavaLamp, system, custom }
 
 enum CollectionType { playlist, folder, mix }

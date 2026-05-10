@@ -8,8 +8,9 @@ class ArtworkEngine {
 
   static Future<String?> buscarPortada(String title, String artist) async {
     // Si la canción no tiene artista o se llama "Desconocido", ignoramos
-    if (artist.toLowerCase().contains("desconocido") || artist.isEmpty)
+    if (artist.toLowerCase().contains("desconocido") || artist.isEmpty) {
       return null;
+    }
 
     final query = "$title $artist".toLowerCase().trim();
 

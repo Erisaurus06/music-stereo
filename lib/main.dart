@@ -22,6 +22,7 @@ import 'widgets/player_ui.dart';
 import 'screens/radio_view.dart';
 import 'dart:ui'; // CRÍTICO para el filtro de desenfoque (Blur)
 import 'dart:io';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,9 +31,10 @@ Future<void> main() async {
   );
 
   await NetworkRadar.init();
+  await dotenv.load(fileName: ".env");
   await Supabase.initialize(
-    url: ApiKeys.supabaseUrl,
-    anonKey: ApiKeys.supabaseAnonKey,
+    url: dotenv.env['SUPABASE_URL']!, // Usa el ! para asegurar que no es nulo
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
   await AppState.init();

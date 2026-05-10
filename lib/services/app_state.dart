@@ -44,6 +44,7 @@ class AppState {
         _prefs.getString('artworkStyle') ?? "Lámpara de Lava (Apple)";
     mixedPlayback.value = _prefs.getBool('mixedPlayback') ?? false;
     favoriteSongs.value = _prefs.getStringList('favorites') ?? [];
+    favoriteRadios.value = _prefs.getStringList('favorite_radios') ?? [];
     rachaPomodoro = _prefs.getInt('pomodoro_racha') ?? 0;
 
     final savedAppTheme = _prefs.getString('appThemeMode') ?? 'chameleon';
@@ -139,6 +140,7 @@ class AppState {
         'artwork_style': artworkStyle.value,
         'theme_mode': themeMode.value.toString(),
         'favorites': favoriteSongs.value,
+        'favorite_radios': favoriteRadios.value, // <- Agrega esta línea
         'pomodoro_racha': rachaPomodoro,
         'collections_json': json.encode(
           myCollections.value.map((e) => e.toJson()).toList(),
@@ -174,15 +176,36 @@ class AppState {
     highFidelityAnimations.value = val;
     _prefs.setBool('highFidelityAnimations', val);
     sincronizarConNube();
+  } // ✨ LÓGICA PARA GUARDAR/QUITAR CANCIONES FAVORITAS
+
+  static void toggleFavoriteSong(String songId) {
+    final list = List<String>.from(favoriteSongs.value);
+    if (list.contains(songId)) {
+      list.remove(songId);
+    } else {
+      list.add(songId);
+    }
+    favoriteSongs.value = list;
+    _prefs.setStringList('favorites', list);
+    sincronizarConNube();
   }
 
-  static void toggleFavoriteSong(String string) {}
-
-  static void toggleFavoriteRadio(String title) {}
-}
+  // ✨ LÓGICA PARA GUARDAR/QUITAR RADIOS FAVORITAS
+  static void toggleFavoriteRadio(String radioTitle) {
+    final list = List<String>.from(favoriteRadios.value);
+    if (list.contains(radioTitle)) {
+      list.remove(radioTitle);
+    } else {
+      list.add(radioTitle);
+    }
+    favoriteRadios.value = list;
+    _prefs.setStringList('favorite_radios', list);
+  }
+} // <--- ¡ESTA ES LA LLAVE MÁGICA QUE FALTABA! Cierra la clase AppState.
 
 class DinobotTheme {
   static const Color primaryBlue = Color(0xFF2979FF);
+
   static ThemeData get lightTheme => ThemeData(
     brightness: Brightness.light,
     primaryColor: primaryBlue,
@@ -196,6 +219,7 @@ class DinobotTheme {
     ),
     fontFamily: 'Roboto',
   );
+
   static ThemeData get darkTheme => ThemeData(
     brightness: Brightness.dark,
     primaryColor: primaryBlue,

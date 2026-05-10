@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 
 import '../models/app_models.dart';
@@ -345,31 +344,5 @@ class _CollectionViewState extends State<CollectionView> {
         ],
       ),
     );
-  }
-
-  // ❤️ MEMORIA DE FAVORITOS
-  static final ValueNotifier<List<String>> favoriteSongs =
-      ValueNotifier<List<String>>([]);
-  static final ValueNotifier<List<String>> favoriteRadios =
-      ValueNotifier<List<String>>([]);
-
-  static void toggleFavoriteSong(String songId) {
-    final current = List<String>.from(favoriteSongs.value);
-    if (current.contains(songId)) {
-      current.remove(songId);
-    } else {
-      current.add(songId);
-    }
-    favoriteSongs.value = current;
-  }
-
-  static void toggleFavoriteRadio(String radioName) {
-    final current = List<String>.from(favoriteRadios.value);
-    if (current.contains(radioName)) {
-      current.remove(radioName);
-    } else {
-      current.add(radioName);
-    }
-    favoriteRadios.value = current;
   }
 }

@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class LyricsEngine {
+  static get query => null;
+
   // Ahora pedimos Título y Artista para que la búsqueda sea exacta (como un francotirador)
   static Future<String> buscarCancion(String title, String artist) async {
     try {
@@ -24,13 +27,15 @@ class LyricsEngine {
       if (cleanArtist.toLowerCase().contains("desconocido")) cleanArtist = "";
 
       // 2. Construimos la petición a la red neuronal de Lrclib con los datos limpios
-      final url = Uri.parse(
-        'https://lrclib.net/api/search?track_name=${Uri.encodeComponent(cleanTitle)}&artist_name=${Uri.encodeComponent(cleanArtist)}',
+      final response = await http.get(
+        Uri.parse('https://api.genius.com/search?q=$query'),
+        headers: {
+          'Authorization':
+              'Bearer ${dotenv.env['GENIUS_TOKEN']!}', // Reemplaza ApiKeys.geniusToken
+        },
       );
 
       // 3. Hacemos la llamada (con un límite de 10 segundos para no trabar la app)
-      final response = await http.get(url).timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
 

@@ -337,20 +337,24 @@ class _LibraryViewState extends State<LibraryView>
                   ),
                   onPressed: () {
                     if (playlistName.trim().isEmpty ||
-                        spotifyUrl.trim().isEmpty)
+                        spotifyUrl.trim().isEmpty) {
                       return;
+                    }
                     HapticFeedback.heavyImpact();
 
                     String finalUri = spotifyUrl;
                     if (spotifyUrl.contains("open.spotify.com")) {
                       final parts = spotifyUrl.split("/");
                       final idPart = parts.last.split("?").first;
-                      if (spotifyUrl.contains("playlist"))
+                      if (spotifyUrl.contains("playlist")) {
                         finalUri = "spotify:playlist:$idPart";
-                      if (spotifyUrl.contains("album"))
+                      }
+                      if (spotifyUrl.contains("album")) {
                         finalUri = "spotify:album:$idPart";
-                      if (spotifyUrl.contains("artist"))
+                      }
+                      if (spotifyUrl.contains("artist")) {
                         finalUri = "spotify:artist:$idPart";
+                      }
                     }
 
                     final newCollection = AppCollection(
@@ -507,7 +511,7 @@ class _LibraryViewState extends State<LibraryView>
                 child: Text(
                   query.isEmpty
                       ? "Cargando ADN Musical..."
-                      : "No se encontró '${query}'",
+                      : "No se encontró '$query'",
                   style: TextStyle(
                     color: theme.textTheme.bodyMedium?.color,
                     fontWeight: FontWeight.bold,
@@ -722,7 +726,7 @@ class _LibraryViewState extends State<LibraryView>
                       child: Text(
                         query.isEmpty
                             ? "Aún no tienes colecciones creadas.\n¡Toca un botón arriba para empezar!"
-                            : "No se encontró '${query}'",
+                            : "No se encontró '$query'",
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: theme.textTheme.bodySmall?.color,

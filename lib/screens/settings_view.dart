@@ -15,6 +15,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import '../services/app_state.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // --- 6. AJUSTES (Settings Pro con Nuevas Opciones y Memoria) ---
 class SettingsProView extends StatefulWidget {
@@ -30,7 +31,7 @@ class _SettingsProViewState extends State<SettingsProView> {
     setState(() => _isLoadingSpotify = true);
     try {
       String token = await SpotifySdk.getAccessToken(
-        clientId: ApiKeys.spotifyClientId,
+        clientId: dotenv.env['SPOTIFY_CLIENT_ID']!,
         redirectUrl: "tecconnection://callback",
         scope:
             "app-remote-control, user-modify-playback-state, playlist-read-private",
