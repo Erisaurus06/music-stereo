@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Para la vibración
+import 'package:supabase_flutter/supabase_flutter.dart'; // Para la base de datos
 
 enum PomodoroState { focus, shortBreak, longBreak, idle }
 
@@ -28,8 +30,26 @@ class PomodoroEngine {
     });
   }
 
-  static void _switchPhase() {
+  static Future<void> _switchPhase() async {
+    HapticFeedback.vibrate(); // ✨ Aviso físico de que terminó el tiempo
+
     if (currentState.value == PomodoroState.focus) {
+      // ✨ ¡NUEVO! Guardar sesión exitosa en la nube
+      try {
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId != null) {
+          // Asume que crearás una tabla 'estudio' en tu Supabase
+          await Supabase.instance.client.from('estudio').insert({
+            'user_id': userId,
+            'minutos': 25,
+            'fecha': DateTime.now().toIso8601String(),
+          });
+          debugPrint("✅ Sesión de estudio guardada en la nube");
+        }
+      } catch (e) {
+        debugPrint("❌ Error guardando estadística: $e");
+      }
+
       currentState.value = PomodoroState.shortBreak;
       secondsRemaining.value = 300; // 5 min descanso
     } else {

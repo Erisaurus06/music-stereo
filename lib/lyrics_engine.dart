@@ -1,64 +1,68 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart';
+import 'package:html/parser.dart' as parser;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/material.dart';
 
 class LyricsEngine {
-  static get query => null;
-
-  // Ahora pedimos Título y Artista para que la búsqueda sea exacta (como un francotirador)
-  static Future<String> buscarCancion(String title, String artist) async {
+  // Función principal a la que llamará nuestra UI
+  static Future<String> fetchLyrics(String title, String artist) async {
     try {
-      // 1. ELIMINAMOS LA BASURA DE LAS DESCARGAS (Filtro Industrial)
-      String cleanTitle = title
-          .replaceAll(
-            RegExp(
-              r'(?i)(y2mate|com|oficial|official|video|audio|lyric|lyrics|128kbps|320kbps|\.mp3|\.flac|\.wav)',
-            ),
-            '',
-          )
-          .replaceAll(
-            RegExp(r'\[.*?\]|\(.*?\)', dotAll: true),
-            '',
-          ) // Borra lo que esté entre paréntesis o corchetes (Live Version)
-          .trim();
+      final token = dotenv.env['GENIUS_TOKEN'];
+      if (token == null || token.isEmpty)
+        return "⚠️ Error: Token de Genius no configurado en .env";
 
-      String cleanArtist = artist.replaceAll(RegExp(r'\(.*\)'), '').trim();
-      if (cleanArtist.toLowerCase().contains("desconocido")) cleanArtist = "";
+      // 1. Buscar la canción en la API de Genius
+      final query = Uri.encodeComponent('$title $artist');
+      final searchUrl = Uri.parse("https://api.genius.com/search?q=$query");
 
-      // 2. Construimos la petición a la red neuronal de Lrclib con los datos limpios
       final response = await http.get(
-        Uri.parse('https://api.genius.com/search?q=$query'),
-        headers: {
-          'Authorization':
-              'Bearer ${dotenv.env['GENIUS_TOKEN']!}', // Reemplaza ApiKeys.geniusToken
-        },
+        searchUrl,
+        headers: {"Authorization": "Bearer $token"},
       );
 
-      // 3. Hacemos la llamada (con un límite de 10 segundos para no trabar la app)
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
+        final data = json.decode(response.body);
+        final hits = data['response']['hits'] as List;
 
-        if (data.isNotEmpty) {
-          // Tomamos el resultado más exacto (el primero de la lista)
-          final bestMatch = data[0];
-
-          // PRIORIDAD 1: Letras Sincronizadas (Modo Karaoke Tier 1)
-          if (bestMatch['syncedLyrics'] != null &&
-              bestMatch['syncedLyrics'].toString().trim().isNotEmpty) {
-            return bestMatch['syncedLyrics'];
-          }
-          // PRIORIDAD 2: Letras de texto plano (Modo Scroll Manual)
-          else if (bestMatch['plainLyrics'] != null &&
-              bestMatch['plainLyrics'].toString().trim().isNotEmpty) {
-            return bestMatch['plainLyrics'];
-          }
+        if (hits.isNotEmpty) {
+          // Tomamos el enlace de la primera coincidencia
+          final songUrl = hits[0]['result']['url'];
+          // 2. Extraemos la letra real de la página
+          return await _scrapeLyrics(songUrl);
         }
       }
-      return "No se encontraron letras para esta pista.\nIntenta con otra canción.";
+      return "No se encontraron letras para esta canción. 🎵";
     } catch (e) {
-      debugPrint("Error buscando letras en la red: $e");
-      return "Error de conexión.\nRevisa tu internet e inténtalo de nuevo.";
+      debugPrint("Error buscando letra: $e");
+      return "Error de conexión al buscar la letra. Revisa tu internet.";
+    }
+  }
+
+  // Scraper interno porque la API de Genius no devuelve la letra directamente
+  static Future<String> _scrapeLyrics(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final document = parser.parse(response.body);
+        // Genius guarda las letras en estos contenedores especiales
+        final lyricsContainers = document.querySelectorAll(
+          '[data-lyrics-container="true"]',
+        );
+
+        if (lyricsContainers.isNotEmpty) {
+          String lyrics = "";
+          for (var container in lyricsContainers) {
+            // Convertimos los <br> de HTML en saltos de línea reales de Dart
+            container.innerHtml = container.innerHtml.replaceAll('<br>', '\n');
+            lyrics += "${container.text}\n\n";
+          }
+          return lyrics.trim();
+        }
+      }
+      return "No se pudo leer la letra de la página.";
+    } catch (e) {
+      return "Error extrayendo la letra.";
     }
   }
 }

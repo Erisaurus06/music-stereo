@@ -30,10 +30,17 @@ Future<void> main() async {
     const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
   );
 
+  // ✨ ESTO ES LO QUE FALTABA: Inicializar la notificación de la barra de estado
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
+    androidNotificationChannelName: 'TecConnection Reproducción',
+    androidNotificationOngoing: true,
+  );
+
   await NetworkRadar.init();
   await dotenv.load(fileName: ".env");
   await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL']!, // Usa el ! para asegurar que no es nulo
+    url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
@@ -473,6 +480,90 @@ class _MainNavigationState extends State<MainNavigation> {
           },
         );
       },
+    );
+  }
+}
+
+// ✨ PANTALLA FLOTANTE DE DISPOSITIVOS DE AUDIO (BLUETOOTH)
+class AudioRouteSheet extends StatelessWidget {
+  const AudioRouteSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 280,
+      padding: const EdgeInsets.all(25),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.95),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        children: [
+          // Barrita superior (Handle)
+          Container(
+            width: 50,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Colors.grey[700],
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          const SizedBox(height: 25),
+          const Text(
+            "Dispositivos de Audio",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 20),
+
+          // Opcion 1: Teléfono
+          ListTile(
+            leading: const Icon(Icons.phone_iphone_rounded, size: 30),
+            title: const Text(
+              "Este Teléfono",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            trailing: const Icon(
+              Icons.check_circle_rounded,
+              color: Colors.green,
+            ),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              Navigator.pop(context);
+            },
+          ),
+
+          // Opcion 2: Buscar Bluetooth
+          ListTile(
+            leading: const Icon(
+              Icons.bluetooth_audio_rounded,
+              size: 30,
+              color: Colors.grey,
+            ),
+            title: const Text(
+              "Conectar a Bluetooth...",
+              style: TextStyle(color: Colors.grey),
+            ),
+            onTap: () {
+              HapticFeedback.selectionClick();
+              Navigator.pop(context);
+              // Notificación flotante
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(
+                    'Buscando bocinas y audífonos cercanos... 🎧',
+                  ),
+                  backgroundColor: PlayerManager.currentThemeColor.value,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }
