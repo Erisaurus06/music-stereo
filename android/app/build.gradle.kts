@@ -53,3 +53,4 @@ flutter {
 dependencies {
     implementation(files("libs/spotify-app-remote-release-0.8.0.aar"))
 }
+apply plugin: 'com.google.firebase.crashlytics'
