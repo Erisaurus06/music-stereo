@@ -9,9 +9,10 @@ import 'package:on_audio_query/on_audio_query.dart';
 import 'package:palette_generator/palette_generator.dart';
 import 'package:spotify_sdk/spotify_sdk.dart';
 import 'package:spotify_sdk/models/image_uri.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'radio_engine.dart';
-
-// Importamos el cerebro de la app y tu buscador de portadas
 import 'app_state.dart';
 import '../artwork_engine.dart';
 
@@ -24,7 +25,10 @@ class PlayerManager {
   static final AndroidEqualizer equalizer = AndroidEqualizer();
   static final AndroidLoudnessEnhancer loudnessEnhancer =
       AndroidLoudnessEnhancer();
-
+  // ✨ VARIABLES DE LA GRABADORA DE CASSETTE DIGITAL
+  static final AudioRecorder _audioRecorder = AudioRecorder();
+  static final ValueNotifier<bool> isRecording = ValueNotifier(false);
+  static String? _currentRecordPath;
   // MOTOR CON PIPELINE DE HARDWARE INYECTADO
   static final AudioPlayer player = AudioPlayer(
     audioPipeline: AudioPipeline(
@@ -114,7 +118,31 @@ class PlayerManager {
     });
   }
 
-  // LA MAGIA DE EXTRACCIÓN DE COLOR
+  // ✨ EL ESCÁNER DE METADATOS PREMIUM (Solo canciones de verdad)
+  static Future<void> loadLocalMusic() async {
+    bool hasPermission = await audioQuery.permissionsStatus();
+    if (!hasPermission) hasPermission = await audioQuery.permissionsRequest();
+
+    if (hasPermission) {
+      List<SongModel> songs = await audioQuery.querySongs(
+        sortType: null,
+        orderType: OrderType.ASC_OR_SMALLER,
+        uriType: UriType.EXTERNAL,
+        ignoreCase: true,
+      );
+
+      // Filtro de Calidad: Descartamos audios menores a 30 segundos (tonos, notas de voz)
+      songs = songs.where((song) => (song.duration ?? 0) > 30000).toList();
+
+      allLocalSongs.value = songs;
+      _updateQueue();
+      debugPrint(
+        "🎵 Escáner completado: ${songs.length} canciones premium encontradas.",
+      );
+    }
+  }
+
+  // LA MAGIA DE EXTRACCIÓN DE COLOR DE LAS PORTADAS
   static Future<void> _updateDominantColorLocal(SongModel song) async {
     currentThemeColor.value = DinobotTheme.primaryBlue; // Reseteo
     try {
@@ -209,21 +237,6 @@ class PlayerManager {
     }
   }
 
-  static Future<void> loadLocalMusic() async {
-    bool hasPermission = await audioQuery.permissionsStatus();
-    if (!hasPermission) hasPermission = await audioQuery.permissionsRequest();
-    if (hasPermission) {
-      final songs = await audioQuery.querySongs(
-        sortType: null,
-        orderType: OrderType.ASC_OR_SMALLER,
-        uriType: UriType.EXTERNAL,
-        ignoreCase: true,
-      );
-      allLocalSongs.value = songs;
-      _updateQueue();
-    }
-  }
-
   static void toggleShuffle() {
     if (activeEngine.value == AudioEngineType.spotify) {
       SpotifySdk.toggleShuffle();
@@ -233,7 +246,30 @@ class PlayerManager {
     }
   }
 
-  // 1. REPRODUCCIÓN LOCAL (CON FADE IN)
+  // ✨ EL MOTOR DE CROSSFADE (TRANSICIONES ESTILO DJ)
+  static Future<void> _crossfade(
+    bool isFadingOut, {
+    int milliseconds = 400,
+  }) async {
+    const steps = 20;
+    final stepDuration = milliseconds ~/ steps;
+
+    if (isFadingOut) {
+      // Fade Out (De 100% a 0%)
+      for (int i = steps; i >= 0; i--) {
+        await player.setVolume(i / steps);
+        await Future.delayed(Duration(milliseconds: stepDuration));
+      }
+    } else {
+      // Fade In (De 0% a 100%)
+      for (int i = 0; i <= steps; i++) {
+        await player.setVolume(i / steps);
+        await Future.delayed(Duration(milliseconds: stepDuration));
+      }
+    }
+  }
+
+  // 1. REPRODUCCIÓN LOCAL (CON FADE IN Y FADE OUT)
   static Future<void> playSong(SongModel song) async {
     try {
       // Si ya estaba sonando algo, hacemos Fade Out antes de cambiar
@@ -271,7 +307,7 @@ class PlayerManager {
 
       await player.setAudioSource(audioSource);
 
-      // Inicia en silencio y hace Fade In
+      // Inicia en silencio y hace Fade In (Corte premium)
       await player.setVolume(0.0);
       isPlaying.value = true;
       player.play();
@@ -283,7 +319,7 @@ class PlayerManager {
     }
   }
 
-  // 2. PAUSA/PLAY SUAVE (SEPARANDO RADIO Y MP3 PARA EVITAR DESINCRONIZACIÓN)
+  // 2. PAUSA/PLAY SUAVE
   static Future<void> togglePlay() async {
     HapticFeedback.lightImpact();
     try {
@@ -302,7 +338,7 @@ class PlayerManager {
           await player.pause();
         } else {
           isPlaying.value = true;
-          await player.setVolume(1.0); // Aseguramos que no se haya quedado mudo
+          await player.setVolume(1.0);
           player.play();
         }
       } else if (activeEngine.value == AudioEngineType.local) {
@@ -327,7 +363,7 @@ class PlayerManager {
     }
   }
 
-  // ✨ 3. RADIO GLOBAL BLINDADA (CON RESTAURACIÓN DE VOLUMEN)
+  // ✨ 3. RADIO GLOBAL BLINDADA
   static Future<void> playRadio(RadioStation station) async {
     try {
       activeEngine.value = AudioEngineType.radio;
@@ -381,7 +417,7 @@ class PlayerManager {
     }
   }
 
-  // 3. SIGUIENTE CANCIÓN (CON CROSSFADE)
+  // 3. SIGUIENTE CANCIÓN (Automáticamente usa Crossfade gracias a playSong)
   static Future<void> playNext() async {
     if (AppState.mixedPlayback.value) {
       bool switchRiver = Random().nextBool();
@@ -407,7 +443,7 @@ class PlayerManager {
     }
   }
 
-  // 4. CANCIÓN ANTERIOR (CON CROSSFADE)
+  // 4. CANCIÓN ANTERIOR
   static Future<void> playPrevious() async {
     if (activeEngine.value == AudioEngineType.spotify) {
       SpotifySdk.skipPrevious();
@@ -433,26 +469,68 @@ class PlayerManager {
     }
   }
 
-  // ✨ EL MOTOR DE CROSSFADE (TRANSICIONES ESTILO DJ)
-  static Future<void> _crossfade(
-    bool isFadingOut, {
-    int milliseconds = 400,
-  }) async {
-    const steps = 20;
-    final stepDuration = milliseconds ~/ steps;
+  // ✨ LA GRABADORA DE CASSETTE DIGITAL (START)
+  static Future<void> startRecording() async {
+    try {
+      if (activeEngine.value != AudioEngineType.radio || !player.playing) {
+        debugPrint("Solo puedes grabar mientras escuchas la radio.");
+        return;
+      }
 
-    if (isFadingOut) {
-      // Fade Out (De 100% a 0%)
-      for (int i = steps; i >= 0; i--) {
-        await player.setVolume(i / steps);
-        await Future.delayed(Duration(milliseconds: stepDuration));
+      // Pedimos permiso de micrófono (necesario en Android para grabar audio interno/externo)
+      var status = await Permission.microphone.request();
+      if (status != PermissionStatus.granted) {
+        debugPrint("Se necesita permiso de micrófono para grabar.");
+        return;
       }
-    } else {
-      // Fade In (De 0% a 100%)
-      for (int i = 0; i <= steps; i++) {
-        await player.setVolume(i / steps);
-        await Future.delayed(Duration(milliseconds: stepDuration));
+
+      // Preparamos la "Cinta" en la carpeta de documentos del celular
+      final directory = await getApplicationDocumentsDirectory();
+      String fileName =
+          "TecConnection_REC_${DateTime.now().millisecondsSinceEpoch}.m4a";
+      _currentRecordPath = '${directory.path}/$fileName';
+
+      // ¡Botón REC presionado!
+      await _audioRecorder.start(
+        const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 128000),
+        path: _currentRecordPath!,
+      );
+
+      isRecording.value = true;
+      HapticFeedback.vibrate(); // Vibración larga indicando que está grabando
+    } catch (e) {
+      debugPrint("Error al iniciar grabación: $e");
+    }
+  }
+
+  // ✨ LA GRABADORA DE CASSETTE DIGITAL (STOP Y GUARDAR)
+  static Future<void> stopRecording(BuildContext context) async {
+    try {
+      final path = await _audioRecorder.stop();
+      isRecording.value = false;
+      HapticFeedback.heavyImpact(); // Vibración fuerte de cierre
+
+      if (path != null) {
+        debugPrint("Cassette guardado en: $path");
+
+        // Le avisamos al usuario que su grabación está a salvo
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                "📼 ¡Grabación guardada con éxito!\nRevisa tu Biblioteca Local.",
+              ),
+              backgroundColor: currentThemeColor.value,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+
+        // Forzamos un re-escaneo para que el nuevo MP3 aparezca en la lista
+        await loadLocalMusic();
       }
+    } catch (e) {
+      debugPrint("Error al detener grabación: $e");
     }
   }
 }

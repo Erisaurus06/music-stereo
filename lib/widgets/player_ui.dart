@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:music_stereo/services/favorites_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:audio_session/audio_session.dart';
@@ -40,18 +41,23 @@ class FullPlayerModal extends StatelessWidget {
         final double statusBarHeight = MediaQuery.of(context).padding.top;
 
         // 🧠 CEREBRO DE LUMINANCIA: Para el Modo Camaleón
-        // Si el color extraído es muy oscuro, lo forzamos a ser un poco más brillante
-        // para que los botones de Play/Pausa nunca se pierdan.
         final HSLColor hslColor = HSLColor.fromColor(themeColor);
         final Color safeThemeColor = hslColor.lightness < 0.3
             ? hslColor.withLightness(0.4).toColor()
             : themeColor;
 
-        // Calculamos qué color de texto usar DENTRO de los botones de colores
         final bool isLightColor = safeThemeColor.computeLuminance() > 0.5;
         final Color contrastIconColor = isLightColor
             ? Colors.black
             : Colors.white;
+
+        final double luminance = themeColor.computeLuminance();
+        final Color contrastColor = luminance < 0.5
+            ? Colors.white
+            : Colors.black;
+        final Color secondaryContrast = luminance < 0.5
+            ? Colors.white70
+            : Colors.black54;
 
         return Padding(
           padding: EdgeInsets.only(top: statusBarHeight + 15),
@@ -71,18 +77,16 @@ class FullPlayerModal extends StatelessWidget {
                     ? Colors.black54
                     : Colors.white54;
 
-                // Ajustes específicos por Skin
                 if (layoutMode == "Neo-Retro") {
                   bgColor = isLightMode
                       ? const Color(0xFFF5F4F0)
-                      : const Color(0xFF1A1A1D); // Papel viejo o Gris oscuro
+                      : const Color(0xFF1A1A1D);
                 } else if (layoutMode == "Consola Oscura") {
-                  // Spotify SIEMPRE es oscuro, sin importar el modo del sistema
                   bgColor = const Color(0xFF121212);
                   textColor = Colors.white;
                   secondaryTextColor = Colors.white70;
                 } else if (layoutMode == "Cyberpunk Neón") {
-                  bgColor = const Color(0xFF09090B); // Siempre oscuro
+                  bgColor = const Color(0xFF09090B);
                   textColor = Colors.white;
                   secondaryTextColor = Colors.white54;
                 } else if (layoutMode == "Minimalista Zen") {
@@ -104,7 +108,6 @@ class FullPlayerModal extends StatelessWidget {
                               // --- CAPA 1: FONDOS AUTÉNTICOS ---
                               if (layoutMode != "Minimalista Zen" &&
                                   layoutMode != "Cyberpunk Neón") ...[
-                                // 🟢 ESTILO SPOTIFY REAL (Consola Oscura)
                                 if (layoutMode == "Consola Oscura")
                                   Positioned.fill(
                                     child: AnimatedContainer(
@@ -125,7 +128,6 @@ class FullPlayerModal extends StatelessWidget {
                                     ),
                                   ),
 
-                                // 🍎 ESTILO APPLE MUSIC REAL (Cristal Inmersivo / Lámpara de Lava)
                                 if (layoutMode == "Cristal Inmersivo" ||
                                     backgroundStyle ==
                                         "Lámpara de Lava (Apple)")
@@ -136,7 +138,6 @@ class FullPlayerModal extends StatelessWidget {
                                             PlayerManager.currentArtwork,
                                         builder: (context, art, _) => Stack(
                                           children: [
-                                            // 1. Portada estirada gigante al fondo
                                             Positioned.fill(
                                               child: Transform.scale(
                                                 scale: 1.5,
@@ -152,7 +153,6 @@ class FullPlayerModal extends StatelessWidget {
                                                 ),
                                               ),
                                             ),
-                                            // 2. Desenfoque masivo (Efecto Cristal)
                                             Positioned.fill(
                                               child: BackdropFilter(
                                                 filter: ImageFilter.blur(
@@ -164,7 +164,6 @@ class FullPlayerModal extends StatelessWidget {
                                                 ),
                                               ),
                                             ),
-                                            // 3. Tinte para que la letra se lea (Blanco en modo claro, Negro en oscuro)
                                             Positioned.fill(
                                               child: Container(
                                                 color: isLightMode
@@ -176,7 +175,6 @@ class FullPlayerModal extends StatelessWidget {
                                                       ),
                                               ),
                                             ),
-                                            // 4. Sombra inferior suave para los controles
                                             Positioned.fill(
                                               child: Container(
                                                 decoration: BoxDecoration(
@@ -586,6 +584,71 @@ class FullPlayerModal extends StatelessWidget {
                                                         ),
                                                       ),
                                                       const SizedBox(width: 15),
+
+                                                      // ✨ BOTÓN DE FAVORITOS (CORAZÓN)
+                                                      ValueListenableBuilder<
+                                                        String
+                                                      >(
+                                                        valueListenable:
+                                                            PlayerManager
+                                                                .currentTitle,
+                                                        builder: (context, title, _) {
+                                                          return ValueListenableBuilder<
+                                                            List<
+                                                              Map<
+                                                                String,
+                                                                dynamic
+                                                              >
+                                                            >
+                                                          >(
+                                                            valueListenable:
+                                                                FavoritesManager
+                                                                    .favoriteItems,
+                                                            builder: (context, favs, _) {
+                                                              final isFav =
+                                                                  FavoritesManager.isFavorite(
+                                                                    title,
+                                                                  );
+                                                              return AnimatedPress(
+                                                                onTap: () {
+                                                                  HapticFeedback.lightImpact();
+                                                                  FavoritesManager.toggleFavorite(
+                                                                    title,
+                                                                    title,
+                                                                    PlayerManager
+                                                                        .currentArtist
+                                                                        .value,
+                                                                    PlayerManager
+                                                                        .activeEngine
+                                                                        .value
+                                                                        .name,
+                                                                  );
+                                                                },
+                                                                child: Padding(
+                                                                  padding:
+                                                                      const EdgeInsets.only(
+                                                                        right:
+                                                                            8.0,
+                                                                      ),
+                                                                  child: Icon(
+                                                                    isFav
+                                                                        ? Icons
+                                                                              .favorite_rounded
+                                                                        : Icons
+                                                                              .favorite_border_rounded,
+                                                                    color: isFav
+                                                                        ? Colors
+                                                                              .redAccent
+                                                                        : textColor,
+                                                                    size: 32,
+                                                                  ),
+                                                                ),
+                                                              );
+                                                            },
+                                                          );
+                                                        },
+                                                      ),
+
                                                       if (!isRadio && !isLofi)
                                                         AnimatedPress(
                                                           onTap: () async {
@@ -593,7 +656,7 @@ class FullPlayerModal extends StatelessWidget {
                                                                 .enableHaptics
                                                                 .value)
                                                               HapticFeedback.lightImpact();
-                                                            // Lógica de letras omitida por brevedad
+                                                            // Aquí va la lógica de letras si la tienes
                                                           },
                                                           child: Container(
                                                             padding:
@@ -616,29 +679,79 @@ class FullPlayerModal extends StatelessWidget {
                                                             ),
                                                           ),
                                                         ),
-                                                      if (isLofi)
-                                                        Container(
-                                                          padding:
-                                                              const EdgeInsets.all(
-                                                                12,
-                                                              ),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                                color: Colors
-                                                                    .orange
-                                                                    .withOpacity(
-                                                                      0.2,
-                                                                    ),
+                                                      // ✨ BOTÓN DE CASSETTE (SOLO APARECE EN LA RADIO)
+                                                      if (isRadio)
+                                                        ValueListenableBuilder<
+                                                          bool
+                                                        >(
+                                                          valueListenable:
+                                                              PlayerManager
+                                                                  .isRecording,
+                                                          builder: (context, recording, _) => AnimatedPress(
+                                                            onTap: () {
+                                                              if (recording) {
+                                                                PlayerManager.stopRecording(
+                                                                  context,
+                                                                );
+                                                              } else {
+                                                                PlayerManager.startRecording();
+                                                              }
+                                                            },
+                                                            child: AnimatedContainer(
+                                                              duration:
+                                                                  const Duration(
+                                                                    milliseconds:
+                                                                        300,
+                                                                  ),
+                                                              padding:
+                                                                  const EdgeInsets.all(
+                                                                    12,
+                                                                  ),
+                                                              decoration: BoxDecoration(
+                                                                // Si está grabando, parpadea en rojo oscuro. Si no, gris discreto.
+                                                                color: recording
+                                                                    ? Colors.red
+                                                                          .withOpacity(
+                                                                            0.3,
+                                                                          )
+                                                                    : textColor
+                                                                          .withOpacity(
+                                                                            0.08,
+                                                                          ),
                                                                 shape: BoxShape
                                                                     .circle,
+                                                                border:
+                                                                    recording
+                                                                    ? Border.all(
+                                                                        color: Colors
+                                                                            .redAccent,
+                                                                        width:
+                                                                            2,
+                                                                      )
+                                                                    : null,
                                                               ),
-                                                          child: const Icon(
-                                                            Icons
-                                                                .local_fire_department_rounded,
-                                                            color:
-                                                                Colors.orange,
-                                                            size: 24,
+                                                              child: Icon(
+                                                                recording
+                                                                    ? Icons
+                                                                          .stop_circle_rounded
+                                                                    : Icons
+                                                                          .fiber_manual_record_rounded,
+                                                                color: recording
+                                                                    ? Colors
+                                                                          .redAccent
+                                                                    : textColor,
+                                                                size: 24,
+                                                              ),
+                                                            ),
                                                           ),
+                                                        ),
+
+                                                      if (!isRadio && isLofi)
+                                                        const Icon(
+                                                          Icons
+                                                              .local_fire_department_rounded,
+                                                          color: Colors.orange,
+                                                          size: 28,
                                                         ),
                                                       const SizedBox(width: 10),
                                                       AnimatedPress(
@@ -695,6 +808,16 @@ class FullPlayerModal extends StatelessWidget {
                                                             PlayerManager
                                                                 .duration
                                                                 .value;
+                                                        final progress =
+                                                            dur.inMilliseconds >
+                                                                0
+                                                            ? (pos.inMilliseconds /
+                                                                      dur.inMilliseconds)
+                                                                  .clamp(
+                                                                    0.0,
+                                                                    1.0,
+                                                                  )
+                                                            : 0.0;
                                                         return Column(
                                                           children: [
                                                             SliderTheme(
@@ -861,7 +984,7 @@ class FullPlayerModal extends StatelessWidget {
                                                         valueListenable:
                                                             PlayerManager
                                                                 .isPlaying,
-                                                        builder: (context, playing, _) => AnimatedPress(
+                                                        builder: (c, playing, _) => AnimatedPress(
                                                           onTap: () {
                                                             if (AppState
                                                                 .enableHaptics
@@ -915,10 +1038,10 @@ class FullPlayerModal extends StatelessWidget {
                                                                     ]
                                                                   : [],
                                                             ),
-                                                            // Aquí usamos el algoritmo de contraste para el ícono de Play/Pausa
                                                             child: Icon(
                                                               playing
-                                                                  ? (isRadio
+                                                                  ? (PlayerManager.activeEngine.value ==
+                                                                            AudioEngineType.radio
                                                                         ? Icons
                                                                               .stop_rounded
                                                                         : Icons
@@ -991,37 +1114,8 @@ class FullPlayerModal extends StatelessWidget {
                                                           ),
                                                         ),
                                                       if (isLofi)
-                                                        ValueListenableBuilder<
-                                                          int
-                                                        >(
-                                                          valueListenable:
-                                                              PlayerManager
-                                                                  .repeatMode,
-                                                          builder: (c, repeat, _) => AnimatedPress(
-                                                            onTap: () {
-                                                              PlayerManager
-                                                                      .repeatMode
-                                                                      .value =
-                                                                  (repeat == 2)
-                                                                  ? 0
-                                                                  : 2;
-                                                              if (AppState
-                                                                  .enableHaptics
-                                                                  .value)
-                                                                HapticFeedback.lightImpact();
-                                                            },
-                                                            child: Icon(
-                                                              repeat == 2
-                                                                  ? Icons
-                                                                        .repeat_one_on_rounded
-                                                                  : Icons
-                                                                        .repeat_rounded,
-                                                              color: repeat == 2
-                                                                  ? safeThemeColor
-                                                                  : secondaryTextColor,
-                                                              size: 28,
-                                                            ),
-                                                          ),
+                                                        const SizedBox(
+                                                          width: 28,
                                                         ),
                                                     ],
                                                   ),
@@ -1724,7 +1818,7 @@ class _AudioRouteSheetState extends State<AudioRouteSheet> {
   }
 }
 
-// --- 11. VISTA DE COLA INTERACTIVA (UP NEXT) ---
+// --- 11. VISTA DE COLA INTERACTIVA INTELIGENTE (UP NEXT) ---
 class InteractiveQueueView extends StatefulWidget {
   const InteractiveQueueView({super.key});
   @override
@@ -1736,6 +1830,7 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeColor = PlayerManager.currentThemeColor.value;
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.75,
       decoration: BoxDecoration(
@@ -1766,63 +1861,153 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  "${PlayerManager.playbackQueue.length} pistas",
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontWeight: FontWeight.bold,
-                  ),
+                // ✨ Solo mostramos el número de pistas si estamos en modo Local
+                ValueListenableBuilder<AudioEngineType>(
+                  valueListenable: PlayerManager.activeEngine,
+                  builder: (context, engine, _) {
+                    if (engine == AudioEngineType.local) {
+                      return Text(
+                        "${PlayerManager.playbackQueue.length} pistas",
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
                 ),
               ],
             ),
           ),
+
+          // ✨ EL CEREBRO DE LA COLA (EL IF QUE PEDISTE)
           Expanded(
-            child: ReorderableListView.builder(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 100),
-              itemCount: PlayerManager.playbackQueue.length,
-              onReorder: (oldIndex, newIndex) {
-                setState(() {
-                  PlayerManager.reorderQueue(oldIndex, newIndex);
-                });
-              },
-              itemBuilder: (context, index) {
-                final song = PlayerManager.playbackQueue[index];
-                final bool isCurrent =
-                    PlayerManager.currentSong.value?.id == song.id;
-                return ListTile(
-                  key: ValueKey(song.id),
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: SizedBox(
-                      width: 45,
-                      height: 45,
-                      child: HybridArtworkWidget(
-                        artworkData: song.id,
-                        title: song.title,
-                        artist: song.artist ?? "",
+            child: ValueListenableBuilder<AudioEngineType>(
+              valueListenable: PlayerManager.activeEngine,
+              builder: (context, engine, _) {
+                // 🟢 1. SI ESTÁ SONANDO SPOTIFY
+                if (engine == AudioEngineType.spotify) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.speaker_group_rounded,
+                          color: Color(0xFF1DB954),
+                          size: 70,
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          "Conectado a Spotify",
+                          style: TextStyle(
+                            color: theme.textTheme.bodyLarge?.color,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          "La cola de reproducción está siendo\ngestionada por la app de Spotify.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // 🔴 2. SI ESTÁ SONANDO LA RADIO
+                if (engine == AudioEngineType.radio) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.radio_rounded,
+                          color: Colors.redAccent,
+                          size: 70,
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          "Transmisión en Vivo",
+                          style: TextStyle(
+                            color: theme.textTheme.bodyLarge?.color,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          "Las estaciones globales no\ntienen cola de reproducción.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // 🎵 3. SI ESTÁ SONANDO EL MP3 LOCAL (Tu código original)
+                if (PlayerManager.playbackQueue.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      "La cola está vacía",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  );
+                }
+
+                return ReorderableListView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 100),
+                  itemCount: PlayerManager.playbackQueue.length,
+                  onReorder: (oldIndex, newIndex) {
+                    setState(() {
+                      PlayerManager.reorderQueue(oldIndex, newIndex);
+                    });
+                  },
+                  itemBuilder: (context, index) {
+                    final song = PlayerManager.playbackQueue[index];
+                    final bool isCurrent =
+                        PlayerManager.currentSong.value?.id == song.id;
+                    return ListTile(
+                      key: ValueKey(song.id),
+                      leading: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: SizedBox(
+                          width: 45,
+                          height: 45,
+                          child: HybridArtworkWidget(
+                            artworkData: song.id,
+                            title: song.title,
+                            artist: song.artist ?? "",
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  title: Text(
-                    song.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: isCurrent ? FontWeight.w900 : FontWeight.bold,
-                      color: isCurrent
-                          ? themeColor
-                          : theme.textTheme.bodyLarge?.color,
-                    ),
-                  ),
-                  subtitle: Text(
-                    song.artist ?? "Desconocido",
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  trailing: const Icon(
-                    Icons.drag_handle_rounded,
-                    color: Colors.white24,
-                  ),
+                      title: Text(
+                        song.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: isCurrent
+                              ? FontWeight.w900
+                              : FontWeight.bold,
+                          color: isCurrent
+                              ? themeColor
+                              : theme.textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      subtitle: Text(
+                        song.artist ?? "Desconocido",
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: const Icon(
+                        Icons.drag_handle_rounded,
+                        color: Colors.white24,
+                      ),
+                    );
+                  },
                 );
               },
             ),

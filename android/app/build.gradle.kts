@@ -1,11 +1,9 @@
 plugins {
     id("com.android.application")
-    // START: FlutterFire Configuration
     id("com.google.gms.google-services")
-    // END: FlutterFire Configuration
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.firebase.crashlytics") // <--- Así debe verse
 }
 
 android {
@@ -29,7 +27,8 @@ defaultConfig {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         
-        // EL PASE VIP PARA SPOTIFY (VERSIÓN KOTLIN CORRECTA)
+        multiDexEnabled = true // ✨ EL PERMISO PARA APPS GIGANTES
+
         manifestPlaceholders += mapOf(
             "redirectSchemeName" to "tecconnection",
             "redirectHostName" to "callback"
@@ -53,4 +52,3 @@ flutter {
 dependencies {
     implementation(files("libs/spotify-app-remote-release-0.8.0.aar"))
 }
-apply plugin: 'com.google.firebase.crashlytics'

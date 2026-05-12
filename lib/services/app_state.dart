@@ -34,26 +34,29 @@ class AppState {
     [],
   );
   static Future<void> init() async {
+    // 1. PRIMERO ABRIMOS LA MEMORIA (Esto siempre va hasta arriba)
     _prefs = await SharedPreferences.getInstance();
+
+    // 2. CARGAMOS TUS CONFIGURACIONES ORIGINALES
     final savedTheme = _prefs.getString('themeMode') ?? 'system';
     themeMode.value = savedTheme == 'dark'
         ? ThemeMode.dark
         : (savedTheme == 'light' ? ThemeMode.light : ThemeMode.system);
+
     fontSize.value = _prefs.getDouble('fontSize') ?? 22.0;
-    artworkStyle.value =
-        _prefs.getString('artworkStyle') ?? "Lámpara de Lava (Apple)";
     mixedPlayback.value = _prefs.getBool('mixedPlayback') ?? false;
     favoriteSongs.value = _prefs.getStringList('favorites') ?? [];
     favoriteRadios.value = _prefs.getStringList('favorite_radios') ?? [];
     rachaPomodoro = _prefs.getInt('pomodoro_racha') ?? 0;
 
     final savedAppTheme = _prefs.getString('appThemeMode') ?? 'chameleon';
-    if (savedAppTheme == 'defaultBlue')
+    if (savedAppTheme == 'defaultBlue') {
       appThemeMode.value = AppThemeMode.defaultBlue;
-    else if (savedAppTheme == 'lavaLamp')
+    } else if (savedAppTheme == 'lavaLamp') {
       appThemeMode.value = AppThemeMode.lavaLamp;
-    else
+    } else {
       appThemeMode.value = AppThemeMode.chameleon;
+    }
 
     final String? collectionsJson = _prefs.getString('my_collections');
     if (collectionsJson != null) {
@@ -62,6 +65,32 @@ class AppState {
           .map((e) => AppCollection.fromJson(e))
           .toList();
     }
+
+    // 3. CARGAMOS LAS NUEVAS CONFIGURACIONES PRO
+    playerLayout.value =
+        _prefs.getString('playerLayout') ?? "Cristal Inmersivo";
+    artworkStyle.value =
+        _prefs.getString('artworkStyle') ?? "Lámpara de Lava (Apple)";
+    enableHaptics.value = _prefs.getBool('enableHaptics') ?? true;
+    highFidelityAnimations.value =
+        _prefs.getBool('highFidelityAnimations') ?? true;
+
+    // 4. EL AUTO-GUARDADO MÁGICO (Listeners)
+    playerLayout.addListener(() {
+      _prefs.setString('playerLayout', playerLayout.value);
+    });
+
+    artworkStyle.addListener(() {
+      _prefs.setString('artworkStyle', artworkStyle.value);
+    });
+
+    enableHaptics.addListener(() {
+      _prefs.setBool('enableHaptics', enableHaptics.value);
+    });
+
+    highFidelityAnimations.addListener(() {
+      _prefs.setBool('highFidelityAnimations', highFidelityAnimations.value);
+    });
   }
 
   static void setTheme(ThemeMode mode) {

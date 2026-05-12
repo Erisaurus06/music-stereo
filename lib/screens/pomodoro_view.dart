@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
-import 'package:spotify_sdk/spotify_sdk.dart';
-import '../services/radio_engine.dart';
+
 // Importaciones de tu proyecto
 import '../services/player_manager.dart';
 import '../services/app_state.dart';
-import '../api_keys.dart';
+
+// ✨ AGREGA ESTAS DOS LÍNEAS AQUÍ:
+import '../services/radio_engine.dart';
+import '../models/app_models.dart';
 
 // ==========================================
 // --- EL CEREBRO DEL POMODORO INMORTAL ---
@@ -23,6 +23,9 @@ final pomodoroPhaseProvider = StateProvider<PomodoroState>(
 final pomodoroSecondsProvider = StateProvider<int>((ref) => 1500); // 25 min
 final pomodoroSessionsProvider = StateProvider<int>((ref) => 0);
 final pomodoroTaskProvider = StateProvider<String>((ref) => "");
+
+// ✨ NUEVO: El estado del Modo Zen
+final zenModeProvider = StateProvider<bool>((ref) => false);
 
 final pomodoroControllerProvider = Provider<PomodoroController>((ref) {
   final controller = PomodoroController(ref);
@@ -48,7 +51,20 @@ class PomodoroController with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (ref.read(pomodoroPhaseProvider) == PomodoroState.idle) return;
+
     if (state == AppLifecycleState.paused) {
+      // ✨ MODO ZEN ESTRÍCTO: Si salen de la app en pleno enfoque...
+      final isZen = ref.read(zenModeProvider);
+      final isFocus = ref.read(pomodoroPhaseProvider) == PomodoroState.focus;
+
+      if (isZen && isFocus) {
+        // ¡Castigo por distraerse! Pierden la racha y se aborta la sesión.
+        stopTimer();
+        ref.read(pomodoroSessionsProvider.notifier).state = 0;
+        AppState.updatePomodoroRacha(0);
+        return;
+      }
+
       _tiempoFondo = DateTime.now();
     } else if (state == AppLifecycleState.resumed && _tiempoFondo != null) {
       final diferenciaSegundos = DateTime.now()
@@ -133,11 +149,18 @@ class PomodoroView extends ConsumerWidget {
     final state = ref.watch(pomodoroPhaseProvider);
     final sec = ref.watch(pomodoroSecondsProvider);
     final sesiones = ref.watch(pomodoroSessionsProvider);
+    final isZenMode = ref.watch(zenModeProvider);
     final controller = ref.read(pomodoroControllerProvider);
 
     final bool isRunning = state != PomodoroState.idle;
     int min = sec ~/ 60;
     int s = sec % 60;
+
+    // MAGIA RESPONSIVA
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double circleSize = screenWidth * 0.55;
+    final double spacing = screenHeight * 0.03;
 
     return ValueListenableBuilder<Color>(
       valueListenable: PlayerManager.currentThemeColor,
@@ -157,7 +180,7 @@ class PomodoroView extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 25,
-                  vertical: 20,
+                  vertical: 15,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -224,7 +247,7 @@ class PomodoroView extends ConsumerWidget {
                 ),
               ),
 
-              // CONTENIDO SCROLLABLE
+              // CONTENIDO SCROLLABLE (Elástico)
               Expanded(
                 child: GestureDetector(
                   onTap: () => FocusScope.of(context).unfocus(),
@@ -232,14 +255,15 @@ class PomodoroView extends ConsumerWidget {
                     physics: const BouncingScrollPhysics(),
                     child: Column(
                       children: [
-                        const SizedBox(height: 20),
+                        SizedBox(height: spacing),
+
                         // INPUT MISIÓN
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 30),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 20,
-                              vertical: 5,
+                              vertical: 2,
                             ),
                             decoration: BoxDecoration(
                               color: theme.cardColor.withOpacity(0.5),
@@ -272,19 +296,19 @@ class PomodoroView extends ConsumerWidget {
                               ),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 18,
+                                fontSize: 16,
                                 color: theme.textTheme.bodyLarge?.color,
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 50),
+                        SizedBox(height: spacing),
 
-                        // CÍRCULO DEL RELOJ
+                        // CÍRCULO DEL RELOJ ELÁSTICO
                         AnimatedContainer(
                           duration: const Duration(milliseconds: 800),
                           curve: Curves.easeOutCubic,
-                          padding: const EdgeInsets.all(35),
+                          padding: EdgeInsets.all(screenWidth * 0.08),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: theme.cardColor,
@@ -305,11 +329,11 @@ class PomodoroView extends ConsumerWidget {
                             alignment: Alignment.center,
                             children: [
                               SizedBox(
-                                width: 240,
-                                height: 240,
+                                width: circleSize,
+                                height: circleSize,
                                 child: CircularProgressIndicator(
                                   value: sec / controller.tiempoTotalFase,
-                                  strokeWidth: 14,
+                                  strokeWidth: 12,
                                   strokeCap: StrokeCap.round,
                                   backgroundColor:
                                       theme.scaffoldBackgroundColor,
@@ -324,7 +348,7 @@ class PomodoroView extends ConsumerWidget {
                                   Text(
                                     "${min.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}",
                                     style: TextStyle(
-                                      fontSize: 65,
+                                      fontSize: screenWidth * 0.15,
                                       fontWeight: FontWeight.w900,
                                       color: theme.textTheme.bodyLarge?.color,
                                       fontFamily: 'monospace',
@@ -376,7 +400,7 @@ class PomodoroView extends ConsumerWidget {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 50),
+                        SizedBox(height: spacing),
 
                         // CONTROLES DE TIEMPO
                         if (state == PomodoroState.idle) ...[
@@ -422,7 +446,7 @@ class PomodoroView extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 30),
+                          SizedBox(height: spacing),
                         ],
 
                         // BOTÓN DE ACCIÓN START/STOP
@@ -437,7 +461,7 @@ class PomodoroView extends ConsumerWidget {
                             duration: const Duration(milliseconds: 300),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 40,
-                              vertical: 18,
+                              vertical: 15,
                             ),
                             decoration: BoxDecoration(
                               gradient: state == PomodoroState.idle
@@ -491,179 +515,20 @@ class PomodoroView extends ConsumerWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 40),
+                        const SizedBox(height: 30),
 
-                        // ==========================================
-                        // --- PANEL DE ECOSISTEMA MUSICAL LOFI ---
-                        // ==========================================
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 25),
-                          decoration: BoxDecoration(
-                            color: theme.brightness == Brightness.dark
-                                ? Colors.black.withOpacity(0.3)
-                                : Colors.grey.shade200,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(40),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // FILA 1: RADIOS EN VIVO (24/7)
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 30,
-                                  right: 15,
-                                  bottom: 15,
-                                ),
-                                child: Text(
-                                  "RADIOS GLOBALES (EN VIVO 24/7)",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w900,
-                                    color: theme.textTheme.bodySmall?.color,
-                                    fontSize: 11,
-                                    letterSpacing: 2,
-                                  ),
-                                ),
-                              ),
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                physics: const BouncingScrollPhysics(),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                ),
-                                child: Row(
-                                  children: [
-                                    _liveRadioCard(
-                                      context,
-                                      theme,
-                                      "Lofi Girl",
-                                      "Chillhop & Focus",
-                                      "https://stream.zeno.fm/f3wvbbqmdg8uv",
-                                      "https://i.imgur.com/xO4zT4M.jpeg",
-                                      Icons.radio_rounded,
-                                      Colors.purpleAccent,
-                                    ),
-                                    _liveRadioCard(
-                                      context,
-                                      theme,
-                                      "Synthwave FM",
-                                      "Retrowave / Cyberpunk",
-                                      "https://stream.nightride.fm/nightride.m4a",
-                                      "https://i.imgur.com/Qh15x1F.jpeg",
-                                      Icons.electric_bolt_rounded,
-                                      Colors.pinkAccent,
-                                    ),
-                                    _liveRadioCard(
-                                      context,
-                                      theme,
-                                      "Chill Lounge",
-                                      "Jazz & Ambient",
-                                      "https://streams.ilovemusic.de/iloveradio17.mp3",
-                                      "https://i.imgur.com/bK1E1pT.jpeg",
-                                      Icons.nightlife_rounded,
-                                      Colors.blueAccent,
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(height: 35),
-
-                              // FILA 2: PISTAS FIJAS DE SUPABASE
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                  left: 30,
-                                  right: 15,
-                                  bottom: 15,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "PISTAS FIJAS (TU NUBE SUPABASE)",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w900,
-                                        color: theme.textTheme.bodySmall?.color,
-                                        fontSize: 11,
-                                        letterSpacing: 2,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.info_outline_rounded,
-                                        color: Colors.grey,
-                                        size: 22,
-                                      ),
-                                      onPressed: () => _showCreditsDialog(
-                                        context,
-                                        theme,
-                                        themeColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              SingleChildScrollView(
-                                scrollDirection: Axis.horizontal,
-                                physics: const BouncingScrollPhysics(),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                ),
-                                child: Row(
-                                  children: [
-                                    _localMusicCard(
-                                      context,
-                                      theme,
-                                      "Awakening Forest",
-                                      "Chase9602",
-                                      "chase9602-the-wind-awakening-memories-of-the-forest-468155.mp3",
-                                      Icons.park_rounded,
-                                      themeColor,
-                                    ),
-                                    _localMusicCard(
-                                      context,
-                                      theme,
-                                      "Study Calm",
-                                      "Fassounds",
-                                      "fassounds-lofi-study-calm-peaceful-chill-hop-112191.mp3",
-                                      Icons.menu_book_rounded,
-                                      themeColor,
-                                    ),
-                                    _localMusicCard(
-                                      context,
-                                      theme,
-                                      "Lofi Girl Chill",
-                                      "Mondamusic",
-                                      "mondamusic-lofi-lofi-girl-lofi-chill-512853.mp3",
-                                      Icons.coffee_rounded,
-                                      themeColor,
-                                    ),
-                                    _localMusicCard(
-                                      context,
-                                      theme,
-                                      "Long Day",
-                                      "Purrplecat",
-                                      "purrplecat-long-day-518602.mp3",
-                                      Icons.nightlight_round,
-                                      themeColor,
-                                    ),
-                                    _localMusicCard(
-                                      context,
-                                      theme,
-                                      "Hip Hop Vibes",
-                                      "Leberch",
-                                      "leberch-lofi-hip-hop-519408.mp3",
-                                      Icons.headphones_rounded,
-                                      themeColor,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                        // ✨ NUEVO: PANEL DE GAMIFICACIÓN Y MODO ZEN
+                        _buildGamificationPanel(
+                          theme,
+                          themeColor,
+                          ref,
+                          sesiones,
+                          isZenMode,
                         ),
+                        const SizedBox(height: 30),
+
+                        // PANEL DE ECOSISTEMA MUSICAL LOFI
+                        _buildLofiPanel(theme, themeColor, context),
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -678,6 +543,207 @@ class PomodoroView extends ConsumerWidget {
   }
 
   // --- MÉTODOS DE CONSTRUCCIÓN INTERNOS ---
+
+  // ✨ EL PANEL DE ESTADÍSTICAS Y MODO ZEN
+  Widget _buildGamificationPanel(
+    ThemeData theme,
+    Color themeColor,
+    WidgetRef ref,
+    int sesiones,
+    bool isZenMode,
+  ) {
+    String rango = sesiones < 4
+        ? "Estudiante"
+        : (sesiones < 10 ? "Erudito" : "Maestro Zen");
+    IconData rangoIcon = sesiones < 4
+        ? Icons.menu_book_rounded
+        : (sesiones < 10
+              ? Icons.school_rounded
+              : Icons.self_improvement_rounded);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(
+            color: isZenMode
+                ? themeColor.withOpacity(0.5)
+                : Colors.white.withOpacity(0.05),
+            width: isZenMode ? 2 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: themeColor.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(rangoIcon, color: themeColor),
+                    ),
+                    const SizedBox(width: 15),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Rango Actual",
+                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                        Text(
+                          rango,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text(
+                      "Racha",
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    Text(
+                      "$sesiones 🔥",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const Divider(height: 30, color: Colors.white10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Modo Zen Estricto",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: theme.textTheme.bodyLarge?.color,
+                      ),
+                    ),
+                    const Text(
+                      "Si sales de la app, pierdes tu racha.",
+                      style: TextStyle(fontSize: 10, color: Colors.grey),
+                    ),
+                  ],
+                ),
+                Switch(
+                  value: isZenMode,
+                  activeColor: themeColor,
+                  onChanged: (val) {
+                    ref.read(zenModeProvider.notifier).state = val;
+                    HapticFeedback.lightImpact();
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLofiPanel(
+    ThemeData theme,
+    Color themeColor,
+    BuildContext context,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      decoration: BoxDecoration(
+        color: theme.brightness == Brightness.dark
+            ? Colors.black.withOpacity(0.3)
+            : Colors.grey.shade200,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 30, right: 15, bottom: 15),
+            child: Text(
+              "RADIOS GLOBALES (EN VIVO 24/7)",
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: theme.textTheme.bodySmall?.color,
+                fontSize: 11,
+                letterSpacing: 2,
+              ),
+            ),
+          ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                _liveRadioCard(
+                  context,
+                  theme,
+                  "Lofi Girl",
+                  "Chillhop & Focus",
+                  "https://stream.zeno.fm/f3wvbbqmdg8uv",
+                  "https://i.imgur.com/xO4zT4M.jpeg",
+                  Icons.radio_rounded,
+                  Colors.purpleAccent,
+                ),
+                _liveRadioCard(
+                  context,
+                  theme,
+                  "Synthwave FM",
+                  "Retrowave / Cyberpunk",
+                  "https://stream.nightride.fm/nightride.m4a",
+                  "https://i.imgur.com/Qh15x1F.jpeg",
+                  Icons.electric_bolt_rounded,
+                  Colors.pinkAccent,
+                ),
+                _liveRadioCard(
+                  context,
+                  theme,
+                  "Chill Lounge",
+                  "Jazz & Ambient",
+                  "https://streams.ilovemusic.de/iloveradio17.mp3",
+                  "https://i.imgur.com/bK1E1pT.jpeg",
+                  Icons.nightlife_rounded,
+                  Colors.blueAccent,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _timeOption(
     BuildContext context,
     ThemeData theme,
@@ -734,7 +800,6 @@ class PomodoroView extends ConsumerWidget {
           builder: (context) => StatefulBuilder(
             builder: (context, setState) {
               return Container(
-                height: 300,
                 padding: const EdgeInsets.all(30),
                 decoration: BoxDecoration(
                   color: theme.cardColor.withOpacity(0.95),
@@ -749,73 +814,76 @@ class PomodoroView extends ConsumerWidget {
                     ),
                   ],
                 ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-                    Text(
-                      "Tiempo a Medida",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: theme.textTheme.bodyLarge?.color,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      "$minutosElegidos minutos",
-                      style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: color,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                    Slider(
-                      value: minutosElegidos.toDouble(),
-                      min: 1,
-                      max: 120,
-                      divisions: 119,
-                      activeColor: color,
-                      inactiveColor: Colors.white10,
-                      onChanged: (v) {
-                        setState(() => minutosElegidos = v.toInt());
-                        HapticFeedback.lightImpact();
-                      },
-                    ),
-                    const Spacer(),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: color,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
+                child: SafeArea(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        onPressed: () {
-                          controller.setModo(minutosElegidos);
-                          Navigator.pop(context);
+                      ),
+                      const SizedBox(height: 30),
+                      Text(
+                        "Tiempo a Medida",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: theme.textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        "$minutosElegidos minutos",
+                        style: TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      Slider(
+                        value: minutosElegidos.toDouble(),
+                        min: 1,
+                        max: 120,
+                        divisions: 119,
+                        activeColor: color,
+                        inactiveColor: Colors.white10,
+                        onChanged: (v) {
+                          setState(() => minutosElegidos = v.toInt());
+                          HapticFeedback.lightImpact();
                         },
-                        child: const Text(
-                          "ESTABLECER",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
+                      ),
+                      const SizedBox(height: 30),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: color,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          onPressed: () {
+                            controller.setModo(minutosElegidos);
+                            Navigator.pop(context);
+                          },
+                          child: const Text(
+                            "ESTABLECER",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },
@@ -834,7 +902,6 @@ class PomodoroView extends ConsumerWidget {
     );
   }
 
-  // ✨ TARJETA PARA RADIOS EN VIVO (24/7)
   Widget _liveRadioCard(
     BuildContext context,
     ThemeData theme,
@@ -851,17 +918,16 @@ class PomodoroView extends ConsumerWidget {
         if (context.mounted)
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("📡 Sintonizando radio en vivo: $title..."),
+              content: Text("📡 Sintonizando: $title..."),
               duration: const Duration(seconds: 1),
             ),
           );
-
         final station = RadioStation(
           id: title.replaceAll(" ", "_").toLowerCase(),
           name: title,
           url: url,
           favicon: imgUrl,
-          tags: "lofi, focus, 24/7",
+          tags: "lofi, focus",
           country: "Global",
         );
         PlayerManager.playRadio(station);
@@ -914,206 +980,6 @@ class PomodoroView extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-
-  // TARJETA PARA PISTAS FIJAS DE SUPABASE
-  Widget _localMusicCard(
-    BuildContext context,
-    ThemeData theme,
-    String title,
-    String artist,
-    String filename,
-    IconData icon,
-    Color color,
-  ) {
-    return GestureDetector(
-      onTap: () async {
-        HapticFeedback.selectionClick();
-        if (context.mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("🎵 Conectando a Supabase: $title..."),
-              duration: const Duration(seconds: 1),
-            ),
-          );
-        try {
-          if (PlayerManager.isSpotifyLinked.value) {
-            try {
-              await SpotifySdk.pause();
-            } catch (_) {}
-          }
-
-          PlayerManager.activeEngine.value = AudioEngineType.local;
-          PlayerManager.currentTitle.value = title;
-          PlayerManager.currentArtist.value = artist;
-          PlayerManager.currentArtwork.value = null;
-          PlayerManager.isPlaying.value = true;
-
-          final String fileUrl =
-              "${ApiKeys.supabaseUrl}/storage/v1/object/public/lofi_sounds/$filename";
-          final audioSource = AudioSource.uri(
-            Uri.parse(fileUrl),
-            tag: MediaItem(id: filename, title: title, artist: artist),
-          );
-
-          await PlayerManager.player.setAudioSource(audioSource);
-          await PlayerManager.player.setLoopMode(LoopMode.one);
-          PlayerManager.player.play();
-        } catch (e) {
-          if (context.mounted)
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  "❌ Error Lofi: Asegúrate de tener tu Bucket creado.",
-                ),
-                backgroundColor: Colors.red,
-              ),
-            );
-        }
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        width: 140,
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(height: 15),
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                color: theme.textTheme.bodyLarge?.color,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              artist,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: theme.textTheme.bodySmall?.color,
-                fontSize: 10,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showCreditsDialog(
-    BuildContext context,
-    ThemeData theme,
-    Color themeColor,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: theme.cardColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.volunteer_activism_rounded, color: themeColor),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  "Supabase Audio",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: theme.textTheme.bodyLarge?.color,
-                    fontSize: 18,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Sube estos archivos a tu Bucket 'lofi_sounds' en Supabase para que los botones inferiores funcionen:",
-                  style: TextStyle(
-                    color: theme.textTheme.bodyMedium?.color,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                Flexible(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 15,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    child: const SingleChildScrollView(
-                      physics: BouncingScrollPhysics(),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "• chase9602-the-wind...\n• fassounds-lofi-study...\n• mondamusic-lofi-girl...\n• purrplecat-long-day...\n• leberch-lofi-hip-hop...",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              height: 1.8,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                "CERRAR",
-                style: TextStyle(
-                  color: themeColor,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }

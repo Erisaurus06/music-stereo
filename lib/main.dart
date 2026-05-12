@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:music_stereo/services/favorites_manager.dart';
 import 'package:music_stereo/widgets/design_components.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:spotify_sdk/spotify_sdk.dart';
@@ -25,6 +26,8 @@ import 'dart:io';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:app_settings/app_settings.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,13 +64,11 @@ Future<void> main() async {
   );
 
   await AppState.init();
+  await FavoritesManager.init(); // ✨ AGREGA ESTA LÍNEA AQUÍ
   PlayerManager.init();
+  await AppState.init();
 
   runApp(const ProviderScope(child: TecConnectionApp()));
-}
-
-class FirebaseCrashlytics {
-  static get instance => null;
 }
 
 class TecConnectionApp extends StatelessWidget {
@@ -88,23 +89,36 @@ class TecConnectionApp extends StatelessWidget {
   }
 }
 
+// ✨ EL BÚNKER OFFLINE (Pégalo en lib/main.dart)
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
+
   @override
   Widget build(BuildContext context) {
+    // 1. Verificamos si ya hay una sesión guardada localmente (Funciona sin internet)
+    final currentSession = Supabase.instance.client.auth.currentSession;
+
+    // Si la sesión existe en el teléfono, entra directo a la app
+    if (currentSession != null) {
+      return const MainNavigation();
+    }
+
+    // 2. Si no hay sesión, escuchamos los cambios (por si el usuario inicia sesión ahora)
     return StreamBuilder<AuthState>(
       stream: Supabase.instance.client.auth.onAuthStateChange,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
+            backgroundColor: Color(0xFF09090B),
             body: Center(child: CircularProgressIndicator()),
           );
         }
+
         final session = snapshot.hasData ? snapshot.data!.session : null;
         if (session != null) {
           return const MainNavigation();
         } else {
-          return const AuthScreen();
+          return const AuthScreen(); // Si no hay nada, muestra el login
         }
       },
     );
@@ -221,7 +235,7 @@ class _MainNavigationState extends State<MainNavigation> {
             border: Border.all(color: Colors.white.withOpacity(0.05)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.2),
+                color: Colors.black.withOpacity(0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -362,6 +376,11 @@ class _MainNavigationState extends State<MainNavigation> {
                     final Color contrastColor = isLightColor
                         ? Colors.black
                         : Colors.white;
+                    // Algoritmo de contraste agresivo
+                    final double luminance = themeColor.computeLuminance();
+                    final Color secondaryContrast = luminance < 0.5
+                        ? Colors.white70
+                        : Colors.black54;
 
                     return AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
@@ -457,19 +476,16 @@ class _MainNavigationState extends State<MainNavigation> {
                           // ✨ CORRECCIÓN 2: BOTÓN DE BLUETOOTH (Solo 1, el correcto)
                           IconButton(
                             icon: Icon(
-                              Icons.speaker_group_rounded,
-                              color: AppState.backgroundImagePath.value != null
-                                  ? theme.textTheme.bodyLarge?.color
-                                  : contrastColor,
-                              size: 24,
+                              Icons
+                                  .bluetooth_audio_rounded, // Un icono más adecuado
+                              color: contrastColor,
+                              size: 26,
                             ),
                             onPressed: () {
-                              HapticFeedback.lightImpact();
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (c) => const AudioRouteSheet(),
+                              HapticFeedback.heavyImpact(); // Un golpe fuerte al tocar
+                              // ✨ ESTO ABRE LAS CONFIGURACIONES REALES DE BLUETOOTH DEL CELULAR
+                              AppSettings.openAppSettings(
+                                type: AppSettingsType.bluetooth,
                               );
                             },
                           ),

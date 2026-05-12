@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:music_stereo/services/radio_engine.dart';
 import 'package:music_stereo/widgets/design_components.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:path_provider/path_provider.dart';
@@ -13,6 +14,14 @@ import '../services/player_manager.dart';
 import '../services/app_state.dart';
 import '../models/app_models.dart';
 import '../main.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
+import '../services/favorites_manager.dart';
+import '../services/player_manager.dart';
+import '../models/app_models.dart';
+import '../api_keys.dart';
 
 // --- 4. BIBLIOTECA CON BUSCADOR INTEGRADO ---
 class LibraryView extends StatefulWidget {
@@ -927,6 +936,202 @@ class _LibraryViewState extends State<LibraryView>
             ),
             Icon(Icons.chevron_right_rounded, color: theme.dividerColor),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class FavoritesProView extends StatelessWidget {
+  const FavoritesProView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          "Mis Favoritos",
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            color: theme.textTheme.bodyLarge?.color,
+            letterSpacing: -0.5,
+          ),
+        ),
+        centerTitle: false,
+      ),
+      body: ValueListenableBuilder<List<Map<String, dynamic>>>(
+        valueListenable: FavoritesManager.favoriteItems,
+        builder: (context, favs, _) {
+          if (favs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.heart_broken_rounded,
+                    size: 80,
+                    color: theme.dividerColor,
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    "Tu bóveda está vacía",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: theme.textTheme.bodyMedium?.color,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    "Toca el corazón en el reproductor\npara guardar música aquí.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 100, top: 10),
+            itemCount: favs.length,
+            itemBuilder: (context, index) {
+              // Invertimos la lista para que los más nuevos salgan arriba
+              final item = favs[favs.length - 1 - index];
+              final isRadio =
+                  item['type'] == 'radio' ||
+                  item['type'] == 'AudioEngineType.radio';
+
+              return DismissibleFavoriteTile(
+                item: item,
+                isRadio: isRadio,
+                theme: theme,
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class DismissibleFavoriteTile extends StatelessWidget {
+  final Map<String, dynamic> item;
+  final bool isRadio;
+  final ThemeData theme;
+
+  const DismissibleFavoriteTile({
+    super.key,
+    required this.item,
+    required this.isRadio,
+    required this.theme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dismissible(
+      key: Key(item['id']),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 30),
+        color: Colors.redAccent,
+        child: const Icon(
+          Icons.delete_sweep_rounded,
+          color: Colors.white,
+          size: 30,
+        ),
+      ),
+      onDismissed: (direction) {
+        HapticFeedback.mediumImpact();
+        FavoritesManager.toggleFavorite(
+          item['id'],
+          item['title'],
+          item['artist'],
+          item['type'],
+        );
+      },
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
+        leading: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: isRadio
+                ? Colors.redAccent.withOpacity(0.2)
+                : Colors.deepPurpleAccent.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            isRadio ? Icons.radio_rounded : Icons.music_note_rounded,
+            color: isRadio ? Colors.redAccent : Colors.deepPurpleAccent,
+          ),
+        ),
+        title: Text(
+          item['title'],
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: theme.textTheme.bodyLarge?.color,
+          ),
+        ),
+        subtitle: Text(
+          isRadio
+              ? "Radio en Vivo • ${item['artist']}"
+              : "Pista Local • ${item['artist']}",
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+        trailing: IconButton(
+          icon: const Icon(
+            Icons.play_circle_fill_rounded,
+            color: Colors.grey,
+            size: 35,
+          ),
+          onPressed: () async {
+            HapticFeedback.lightImpact();
+
+            // LÓGICA DE REPRODUCCIÓN DESDE FAVORITOS
+            if (isRadio) {
+              final station = RadioStation(
+                id: item['id'],
+                name: item['title'],
+                url:
+                    item['url'] ??
+                    "https://stream.zeno.fm/f3wvbbqmdg8uv", // Fallback a Lofi Girl si no hay URL
+                favicon: item['imageUrl'] ?? "",
+                tags: "favorite",
+                country: "Local",
+              );
+              PlayerManager.playRadio(station);
+            } else {
+              // Lógica de MP3 Supabase
+              PlayerManager.activeEngine.value = AudioEngineType.local;
+              PlayerManager.currentTitle.value = item['title'];
+              PlayerManager.currentArtist.value = item['artist'];
+              PlayerManager.isPlaying.value = true;
+
+              final String fileUrl =
+                  "${ApiKeys.supabaseUrl}/storage/v1/object/public/lofi_sounds/${item['id']}";
+              final audioSource = AudioSource.uri(
+                Uri.parse(fileUrl),
+                tag: MediaItem(
+                  id: item['id'],
+                  title: item['title'],
+                  artist: item['artist'],
+                ),
+              );
+              await PlayerManager.player.setAudioSource(audioSource);
+              PlayerManager.player.play();
+            }
+          },
         ),
       ),
     );
