@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "85110058111",
+    "project_id": "music-stereo",
+    "storage_bucket": "music-stereo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:85110058111:android:fab376947b813ddc55a34a",
+        "android_client_info": {
+          "package_name": "com.example.music_stereo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKZw9wpZDmsWA83VxbxaNQZ-AkasxQqVg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

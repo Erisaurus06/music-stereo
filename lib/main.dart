@@ -23,13 +23,21 @@ import 'screens/radio_view.dart';
 import 'dart:ui'; // CRÍTICO para el filtro de desenfoque (Blur)
 import 'dart:io';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(statusBarColor: Colors.transparent),
   );
+  WidgetsFlutterBinding.ensureInitialized();
 
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  FlutterError.onError = (errorDetails) {
+    FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+  };
   // ✨ ESTO ES LO QUE FALTABA: Inicializar la notificación de la barra de estado
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
@@ -48,6 +56,10 @@ Future<void> main() async {
   PlayerManager.init();
 
   runApp(const ProviderScope(child: TecConnectionApp()));
+}
+
+class FirebaseCrashlytics {
+  static get instance => null;
 }
 
 class TecConnectionApp extends StatelessWidget {
