@@ -4,6 +4,7 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:on_audio_query/on_audio_query.dart';
@@ -26,10 +27,13 @@ class PlayerManager {
   static final AndroidEqualizer equalizer = AndroidEqualizer();
   static final AndroidLoudnessEnhancer loudnessEnhancer =
       AndroidLoudnessEnhancer();
-  // ✨ VARIABLES DE LA GRABADORA DE CASSETTE DIGITAL
-  static final AudioRecorder _audioRecorder = AudioRecorder();
+  // ✨ VARIABLES DEL INTERCEPTOR DE STREAM (GRABADORA HD)
   static final ValueNotifier<bool> isRecording = ValueNotifier(false);
   static String? _currentRecordPath;
+  static String?
+  _currentRadioUrl; // Necesitamos recordar qué URL estamos escuchando
+  static http.Client? _radioRecordClient;
+  static IOSink? _radioRecordSink;
   // MOTOR CON PIPELINE DE HARDWARE INYECTADO
   static final AudioPlayer player = AudioPlayer(
     audioPipeline: AudioPipeline(
@@ -379,6 +383,7 @@ class PlayerManager {
   static Future<void> playRadio(RadioStation station) async {
     try {
       activeEngine.value = AudioEngineType.radio;
+      _currentRadioUrl = station.url;
       isPlaying.value = false;
       await player.stop();
       await player.setVolume(1.0); // 🚨 RESTAURAR VOLUMEN SIEMPRE
@@ -481,67 +486,92 @@ class PlayerManager {
     }
   }
 
-  // ✨ LA GRABADORA DE CASSETTE DIGITAL (START)
+  // ✨ LA GRABADORA DE STREAM (Calidad Pura, Sin Micrófono)
   static Future<void> startRecording() async {
-    try {
-      if (activeEngine.value != AudioEngineType.radio || !player.playing) {
-        debugPrint("Solo puedes grabar mientras escuchas la radio.");
-        return;
-      }
+    if (activeEngine.value != AudioEngineType.radio ||
+        _currentRadioUrl == null) {
+      debugPrint("Solo puedes grabar la radio.");
+      return;
+    }
 
-      // Pedimos permiso de micrófono (necesario en Android para grabar audio interno/externo)
-      var status = await Permission.microphone.request();
-      if (status != PermissionStatus.granted) {
-        debugPrint("Se necesita permiso de micrófono para grabar.");
-        return;
-      }
+    try {
+      // 1. Preparamos el archivo en la carpeta pública
       final directory = Directory('/storage/emulated/0/Music/TecConnection');
       if (!await directory.exists()) {
-        await directory.create(recursive: true); // Crea la carpeta si no existe
+        await directory.create(recursive: true);
       }
-      String fileName = "REC_${DateTime.now().millisecondsSinceEpoch}.m4a";
+
+      // Limpiamos el nombre para que no tenga caracteres raros
+      String safeName = currentTitle.value
+          .replaceAll(RegExp(r'[^\w\s]+'), '')
+          .replaceAll(' ', '_');
+      String fileName =
+          "REC_${safeName}_${DateTime.now().millisecondsSinceEpoch}.mp3";
       _currentRecordPath = '${directory.path}/$fileName';
-      // ¡Botón REC presionado!
-      await _audioRecorder.start(
-        const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 128000),
-        path: _currentRecordPath!,
+
+      // 2. MAGIA PURA: Abrimos una tubería directa a la estación de radio
+      _radioRecordClient = http.Client();
+      final request = http.Request('GET', Uri.parse(_currentRadioUrl!));
+      final response = await _radioRecordClient!.send(request);
+
+      // 3. Empezamos a inyectar el audio puro en el archivo MP3
+      final file = File(_currentRecordPath!);
+      _radioRecordSink = file.openWrite();
+
+      response.stream.listen(
+        (chunk) {
+          _radioRecordSink?.add(chunk); // Escribimos cada fragmento de canción
+        },
+        onError: (e) {
+          debugPrint("Error interceptando: $e");
+          stopRecording(null); // Detenemos si falla el internet
+        },
+        onDone: () {
+          stopRecording(null); // Detenemos si se corta la transmisión
+        },
       );
 
       isRecording.value = true;
-      HapticFeedback.vibrate(); // Vibración larga indicando que está grabando
+      HapticFeedback.vibrate(); // Vibración premium
     } catch (e) {
-      debugPrint("Error al iniciar grabación: $e");
+      debugPrint("Error al grabar stream: $e");
     }
   }
 
-  // ✨ LA GRABADORA DE CASSETTE DIGITAL (STOP Y GUARDAR)
-  static Future<void> stopRecording(BuildContext context) async {
+  // ✨ DETENER GRABACIÓN Y CERRAR LA TUBERÍA
+  static Future<void> stopRecording(BuildContext? context) async {
+    if (!isRecording.value) return;
+
     try {
-      final path = await _audioRecorder.stop();
       isRecording.value = false;
-      HapticFeedback.heavyImpact(); // Vibración fuerte de cierre
+      HapticFeedback.heavyImpact();
 
-      if (path != null) {
-        debugPrint("Cassette guardado en: $path");
+      // Cortamos la conexión de internet de la grabadora
+      _radioRecordClient?.close();
+      _radioRecordClient = null;
 
-        // Le avisamos al usuario que su grabación está a salvo
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                "📼 ¡Grabación guardada con éxito!\nRevisa tu Biblioteca Local.",
-              ),
-              backgroundColor: currentThemeColor.value,
-              duration: const Duration(seconds: 4),
+      // Sellamos el archivo MP3
+      await _radioRecordSink?.flush();
+      await _radioRecordSink?.close();
+      _radioRecordSink = null;
+
+      debugPrint("📼 Grabación HD sellada en: $_currentRecordPath");
+
+      if (context != null && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              "📼 ¡Grabación de alta fidelidad guardada en tu biblioteca!",
             ),
-          );
-        }
-
-        // Forzamos un re-escaneo para que el nuevo MP3 aparezca en la lista
-        await loadLocalMusic();
+            backgroundColor: currentThemeColor.value,
+          ),
+        );
       }
+
+      // Escaneamos para que aparezca la nueva canción local
+      await loadLocalMusic();
     } catch (e) {
-      debugPrint("Error al detener grabación: $e");
+      debugPrint("Error cerrando archivo: $e");
     }
   }
 }
