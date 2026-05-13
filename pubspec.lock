@@ -688,6 +688,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.2"
+  interactive_slider:
+    dependency: "direct main"
+    description:
+      name: interactive_slider
+      sha256: "0b67d6161335059250141c3bfff82b15fb4f852a797a93d9e4b1234ad27b6655"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.1"
   io:
     dependency: transitive
     description:
@@ -1000,6 +1008,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.0"
+  perfect_volume_control:
+    dependency: "direct main"
+    description:
+      name: perfect_volume_control
+      sha256: "76ff61125e4937a25a9dec540f5e024d50fcc40b0e521f30b04552b626dcf589"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.6"
   permission_handler:
     dependency: "direct main"
     description:

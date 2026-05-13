@@ -10,13 +10,14 @@ import 'package:http/http.dart' as http;
 import 'package:audio_session/audio_session.dart';
 import 'package:app_settings/app_settings.dart';
 import 'package:just_audio/just_audio.dart';
-
+import 'package:interactive_slider/interactive_slider.dart';
 // Importaciones de tus otras carpetas
 import '../models/app_models.dart';
 import '../services/player_manager.dart';
 import '../services/app_state.dart';
 import '../services/network_radar.dart';
 import 'design_components.dart';
+import 'package:perfect_volume_control/perfect_volume_control.dart';
 
 // --- 7. REPRODUCTOR GIGANTE (UX MEJORADO: CONTRASTE Y MODO CLARO) ---
 class FullPlayerModal extends StatelessWidget {
@@ -32,6 +33,8 @@ class FullPlayerModal extends StatelessWidget {
     "Watermello",
     "The Mountain",
   ];
+  
+  get PerfectVolumeControl => null;
 
   @override
   Widget build(BuildContext context) {
@@ -501,7 +504,6 @@ class FullPlayerModal extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-
                                     // 🎛️ CONTROLES BOTTOM
                                     Padding(
                                       padding: const EdgeInsets.fromLTRB(
@@ -1119,6 +1121,31 @@ class FullPlayerModal extends StatelessWidget {
                                                         ),
                                                     ],
                                                   ),
+
+                                                  const SizedBox(
+                                                    height: 25,
+                                                  ), // Espaciador antes del volumen
+   // ✨ SLIDER DE VOLUMEN SINCRONIZADO CON EL HARDWARE
+                                                    StreamBuilder<double>(
+                                                      stream: PerfectVolumeControl.stream, // Escucha los botones físicos del celular
+                                                      builder: (context, snapshot) {
+                                                        final double currentVolume = snapshot.data ?? 0.5; // Mitad por defecto
+
+                                                        return InteractiveSlider(
+                                                          min: 0.0,
+                                                          max: 1.0,
+                                                          initialProgress: currentVolume,
+                                                          startIcon: Icon(Icons.volume_mute_rounded, color: textColor.withOpacity(0.5), size: 20),
+                                                          endIcon: Icon(Icons.volume_up_rounded, color: textColor.withOpacity(0.5), size: 20),
+                                                          foregroundColor: safeThemeColor.withOpacity(0.8), 
+                                                          backgroundColor: isLightMode ? Colors.black.withOpacity(0.05) : Colors.white.withOpacity(0.1),
+                                                          onChanged: (v) {
+                                                            // Cambia el volumen general del celular
+                                                            PerfectVolumeControl.setVolume(v);
+                                                          },
+                                                        );
+                                                      },
+                                                    ),
                                                 ],
                                               );
                                             },

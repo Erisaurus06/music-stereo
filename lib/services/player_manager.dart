@@ -133,13 +133,24 @@ class PlayerManager {
       );
 
       // Filtro de Calidad: Descartamos audios menores a 30 segundos (tonos, notas de voz)
-      songs = songs.where((song) => (song.duration ?? 0) > 30000).toList();
+      await audioQuery.querySongs(
+        sortType: null,
+        orderType: OrderType.ASC_OR_SMALLER,
+        uriType: UriType.EXTERNAL,
+        ignoreCase: true,
+      );
+
+      // ✨ FILTRO ESTRICTO: Solo audios largos Y que estén en tu carpeta de música
+      songs = songs.where((song) {
+        final bool isLongEnough = (song.duration ?? 0) > 30000; // Más de 30 seg
+        // Filtramos para que solo tome de la carpeta Music o TecConnection
+        final bool isInMusicFolder =
+            song.data.contains('/Music/') ||
+            song.data.contains('TecConnection');
+        return isLongEnough && isInMusicFolder;
+      }).toList();
 
       allLocalSongs.value = songs;
-      _updateQueue();
-      debugPrint(
-        "🎵 Escáner completado: ${songs.length} canciones premium encontradas.",
-      );
     }
   }
 
