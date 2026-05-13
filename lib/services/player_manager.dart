@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -483,13 +484,12 @@ class PlayerManager {
         debugPrint("Se necesita permiso de micrófono para grabar.");
         return;
       }
-
-      // Preparamos la "Cinta" en la carpeta de documentos del celular
-      final directory = await getApplicationDocumentsDirectory();
-      String fileName =
-          "TecConnection_REC_${DateTime.now().millisecondsSinceEpoch}.m4a";
+      final directory = Directory('/storage/emulated/0/Music/TecConnection');
+      if (!await directory.exists()) {
+        await directory.create(recursive: true); // Crea la carpeta si no existe
+      }
+      String fileName = "REC_${DateTime.now().millisecondsSinceEpoch}.m4a";
       _currentRecordPath = '${directory.path}/$fileName';
-
       // ¡Botón REC presionado!
       await _audioRecorder.start(
         const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 128000),
