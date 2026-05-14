@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:music_stereo/services/favorites_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
@@ -18,6 +19,7 @@ import '../services/app_state.dart';
 import '../services/network_radar.dart';
 import 'design_components.dart';
 import 'package:perfect_volume_control/perfect_volume_control.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 // --- 7. REPRODUCTOR GIGANTE (UX MEJORADO: CONTRASTE Y MODO CLARO) ---
 class FullPlayerModal extends StatelessWidget {
@@ -33,7 +35,7 @@ class FullPlayerModal extends StatelessWidget {
     "Watermello",
     "The Mountain",
   ];
-  
+
   get PerfectVolumeControl => null;
 
   @override
@@ -1125,38 +1127,23 @@ class FullPlayerModal extends StatelessWidget {
                                                   const SizedBox(
                                                     height: 25,
                                                   ), // Espaciador antes del volumen
-   // ✨ SLIDER DE VOLUMEN SINCRONIZADO CON EL HARDWARE
-                                                    StreamBuilder<double>(
-                                                      stream: PerfectVolumeControl.stream, // Escucha los botones físicos del celular
-                                                      builder: (context, snapshot) {
-                                                        final double currentVolume = snapshot.data ?? 0.5; // Mitad por defecto
-
-                                                        return InteractiveSlider(
-                                                          min: 0.0,
-                                                          max: 1.0,
-                                                          initialProgress: currentVolume,
-                                                          startIcon: Icon(Icons.volume_mute_rounded, color: textColor.withOpacity(0.5), size: 20),
-                                                          endIcon: Icon(Icons.volume_up_rounded, color: textColor.withOpacity(0.5), size: 20),
-                                                          foregroundColor: safeThemeColor.withOpacity(0.8), 
-                                                          backgroundColor: isLightMode ? Colors.black.withOpacity(0.05) : Colors.white.withOpacity(0.1),
-                                                          onChanged: (v) {
-                                                            // Cambia el volumen general del celular
-                                                            PerfectVolumeControl.setVolume(v);
-                                                          },
-                                                        );
-                                                      },
-                                                    ),
-                                                ],
+                                                  // ✨ LLAMADA AL COMPONENTE DE VOLUMEN SINCRONIZADO
+                                                  SystemVolumeSlider(
+                                                    activeColor: safeThemeColor
+                                                        .withOpacity(0.8),
+                                                    textColor: textColor,
+                                                  ),
+                                                ], // Cierre de la Column de controles
                                               );
                                             },
                                           );
                                         },
                                       ),
                                     ),
-                                  ],
+                                  ], // Cierre de los children de la Column principal
                                 ),
                               ),
-                            ],
+                            ], // Cierre del Stack principal
                           );
                         },
                       );
@@ -1170,7 +1157,7 @@ class FullPlayerModal extends StatelessWidget {
       },
     );
   }
-}
+} // <--- ESTA ES LA LLAVE FINAL DE LA CLASE FullPlayerModal
 
 // 🖌️ HERRAMIENTA EXTRA PARA EL MODO CYBERPUNK (Pegar hasta el final del archivo)
 class GridPainter extends CustomPainter {
@@ -2376,5 +2363,144 @@ class LyricsEngine {
       '',
     );
     return clean.trim();
+  }
+}
+
+// ✨ COMPONENTE DE VOLUMEN SINCRONIZADO (Fábrica independiente)
+class SystemVolumeSlider extends StatefulWidget {
+  final Color activeColor;
+  final Color textColor;
+  const SystemVolumeSlider({
+    super.key,
+    required this.activeColor,
+    required this.textColor,
+  });
+
+  @override
+  State<SystemVolumeSlider> createState() => _SystemVolumeSliderState();
+}
+
+class _SystemVolumeSliderState extends State<SystemVolumeSlider> {
+  double _currentVolume = 0.5;
+
+  @override
+  void initState() {
+    super.initState();
+    // 1. Leer volumen inicial
+    FlutterVolumeController.getVolume().then(
+      (v) => setState(() => _currentVolume = v ?? 0.5),
+    );
+    // 2. Escuchar cambios de los botones físicos
+    FlutterVolumeController.addListener((v) {
+      if (mounted) setState(() => _currentVolume = v);
+    });
+  }
+
+  @override
+  void dispose() {
+    FlutterVolumeController.removeListener();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InteractiveSlider(
+      min: 0.0,
+      max: 1.0,
+      initialProgress: _currentVolume,
+      startIcon: Icon(
+        Icons.volume_mute_rounded,
+        color: widget.textColor.withOpacity(0.5),
+        size: 20,
+      ),
+      endIcon: Icon(
+        Icons.volume_up_rounded,
+        color: widget.textColor.withOpacity(0.5),
+        size: 20,
+      ),
+      foregroundColor: widget.activeColor,
+      onChanged: (v) {
+        FlutterVolumeController.setVolume(v); // Cambia el volumen del sistema
+      },
+    );
+  }
+}
+// ✨ EL REPRODUCTOR DE VIDEO VISUAL (VLC STYLE)
+class YouTubeVideoModal extends StatefulWidget {
+  final String videoId;
+  const YouTubeVideoModal({super.key, required this.videoId});
+
+  @override
+  State<YouTubeVideoModal> createState() => _YouTubeVideoModalState();
+}
+
+class _YouTubeVideoModalState extends State<YouTubeVideoModal> {
+  late YoutubePlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    // Extraemos el ID del video si pusiste el link completo, o usamos el ID directo
+    final vId = YoutubePlayer.convertUrlToId(widget.videoId) ?? widget.videoId;
+    
+    _controller = YoutubePlayerController(
+      initialVideoId: vId,
+      flags: const YoutubePlayerFlags(
+        autoPlay: true,
+        mute: false,
+        loop: true, // Ideal para videos de Lofi o Study with me
+        hideControls: false,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(15),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(25),
+        child: Container(
+          color: Colors.black,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Barra superior para cerrar
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                color: Colors.black87,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Estudia Conmigo", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              // El Reproductor de Video
+              YoutubePlayer(
+                controller: _controller,
+                showVideoProgressIndicator: true,
+                progressIndicatorColor: Colors.redAccent,
+                progressColors: const ProgressBarColors(
+                  playedColor: Colors.redAccent,
+                  handleColor: Colors.redAccent,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

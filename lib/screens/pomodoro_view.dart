@@ -2,14 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
+import 'package:flutter_riverpod/legacy.dart'; // Mantén esto para que funcione StateProvider
+import 'package:music_stereo/services/radio_engine.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:url_launcher/url_launcher.dart'; // Para abrir Spotify
 
-// Importaciones de tu proyecto
 import '../services/player_manager.dart';
 import '../services/app_state.dart';
-
-// ✨ AGREGA ESTAS DOS LÍNEAS AQUÍ:
-import '../services/radio_engine.dart';
 import '../models/app_models.dart';
 
 // ==========================================
@@ -22,9 +21,13 @@ final pomodoroPhaseProvider = StateProvider<PomodoroState>(
 );
 final pomodoroSecondsProvider = StateProvider<int>((ref) => 1500); // 25 min
 final pomodoroSessionsProvider = StateProvider<int>((ref) => 0);
-final pomodoroTaskProvider = StateProvider<String>((ref) => "");
 
-// ✨ NUEVO: El estado del Modo Zen
+// ✨ MEMORIA DE PLAYLISTS Y VIDEOS (Inteligente)
+final customLinksProvider = StateProvider<List<Map<String, String>>>(
+  (ref) => [],
+);
+
+final pomodoroTaskProvider = StateProvider<String>((ref) => "");
 final zenModeProvider = StateProvider<bool>((ref) => false);
 
 final pomodoroControllerProvider = Provider<PomodoroController>((ref) {
@@ -53,18 +56,15 @@ class PomodoroController with WidgetsBindingObserver {
     if (ref.read(pomodoroPhaseProvider) == PomodoroState.idle) return;
 
     if (state == AppLifecycleState.paused) {
-      // ✨ MODO ZEN ESTRÍCTO: Si salen de la app en pleno enfoque...
       final isZen = ref.read(zenModeProvider);
       final isFocus = ref.read(pomodoroPhaseProvider) == PomodoroState.focus;
 
       if (isZen && isFocus) {
-        // ¡Castigo por distraerse! Pierden la racha y se aborta la sesión.
         stopTimer();
         ref.read(pomodoroSessionsProvider.notifier).state = 0;
         AppState.updatePomodoroRacha(0);
         return;
       }
-
       _tiempoFondo = DateTime.now();
     } else if (state == AppLifecycleState.resumed && _tiempoFondo != null) {
       final diferenciaSegundos = DateTime.now()
@@ -138,7 +138,7 @@ class PomodoroController with WidgetsBindingObserver {
 }
 
 // ==========================================
-// --- VISTA DE PRODUCTIVIDAD ---
+// --- VISTA DE PRODUCTIVIDAD (UI/UX PREMIUM) ---
 // ==========================================
 class PomodoroView extends ConsumerWidget {
   const PomodoroView({super.key});
@@ -156,7 +156,6 @@ class PomodoroView extends ConsumerWidget {
     int min = sec ~/ 60;
     int s = sec % 60;
 
-    // MAGIA RESPONSIVA
     final double screenHeight = MediaQuery.of(context).size.height;
     final double screenWidth = MediaQuery.of(context).size.width;
     final double circleSize = screenWidth * 0.55;
@@ -176,7 +175,7 @@ class PomodoroView extends ConsumerWidget {
         return SafeArea(
           child: Column(
             children: [
-              // CABECERA
+              // 1. CABECERA
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 25,
@@ -247,7 +246,7 @@ class PomodoroView extends ConsumerWidget {
                 ),
               ),
 
-              // CONTENIDO SCROLLABLE (Elástico)
+              // 2. CONTENIDO CENTRAL SCROLLABLE
               Expanded(
                 child: GestureDetector(
                   onTap: () => FocusScope.of(context).unfocus(),
@@ -517,7 +516,7 @@ class PomodoroView extends ConsumerWidget {
                         ),
                         const SizedBox(height: 30),
 
-                        // ✨ NUEVO: PANEL DE GAMIFICACIÓN Y MODO ZEN
+                        // PANEL DE GAMIFICACIÓN Y MODO ZEN
                         _buildGamificationPanel(
                           theme,
                           themeColor,
@@ -527,8 +526,13 @@ class PomodoroView extends ConsumerWidget {
                         ),
                         const SizedBox(height: 30),
 
-                        // PANEL DE ECOSISTEMA MUSICAL LOFI
-                        _buildLofiPanel(theme, themeColor, context),
+                        // ✨ EL ECOSISTEMA MULTIMEDIA (Secciones Separadas)
+                        _buildMediaEcosystemPanel(
+                          theme,
+                          themeColor,
+                          context,
+                          ref,
+                        ),
                         const SizedBox(height: 80),
                       ],
                     ),
@@ -542,9 +546,10 @@ class PomodoroView extends ConsumerWidget {
     );
   }
 
-  // --- MÉTODOS DE CONSTRUCCIÓN INTERNOS ---
+  // ==========================================
+  // --- SUB-WIDGETS INTERNOS ---
+  // ==========================================
 
-  // ✨ EL PANEL DE ESTADÍSTICAS Y MODO ZEN
   Widget _buildGamificationPanel(
     ThemeData theme,
     Color themeColor,
@@ -672,10 +677,12 @@ class PomodoroView extends ConsumerWidget {
     );
   }
 
-  Widget _buildLofiPanel(
+  // ✨ PANEL MULTIMEDIA DIVIDIDO (Listas Independientes)
+  Widget _buildMediaEcosystemPanel(
     ThemeData theme,
     Color themeColor,
     BuildContext context,
+    WidgetRef ref,
   ) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20),
@@ -688,10 +695,11 @@ class PomodoroView extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 📻 SECCIÓN 1: RADIOS GLOBALES
           Padding(
             padding: const EdgeInsets.only(left: 30, right: 15, bottom: 15),
             child: Text(
-              "RADIOS GLOBALES (EN VIVO 24/7)",
+              "FRECUENCIAS GLOBALES (24/7)",
               style: TextStyle(
                 fontWeight: FontWeight.w900,
                 color: theme.textTheme.bodySmall?.color,
@@ -706,40 +714,299 @@ class PomodoroView extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                _liveRadioCard(
+                _focusMediaCard(
                   context,
                   theme,
                   "Lofi Girl",
                   "Chillhop & Focus",
                   "https://stream.zeno.fm/f3wvbbqmdg8uv",
-                  "https://i.imgur.com/xO4zT4M.jpeg",
                   Icons.radio_rounded,
                   Colors.purpleAccent,
+                  "radio",
                 ),
-                _liveRadioCard(
+                _focusMediaCard(
                   context,
                   theme,
                   "Synthwave FM",
-                  "Retrowave / Cyberpunk",
+                  "Retrowave Vibes",
                   "https://stream.nightride.fm/nightride.m4a",
-                  "https://i.imgur.com/Qh15x1F.jpeg",
                   Icons.electric_bolt_rounded,
                   Colors.pinkAccent,
-                ),
-                _liveRadioCard(
-                  context,
-                  theme,
-                  "Chill Lounge",
-                  "Jazz & Ambient",
-                  "https://streams.ilovemusic.de/iloveradio17.mp3",
-                  "https://i.imgur.com/bK1E1pT.jpeg",
-                  Icons.nightlife_rounded,
-                  Colors.blueAccent,
+                  "radio",
                 ),
               ],
             ),
           ),
+
+          const SizedBox(height: 30),
+
+          // 🟢 SECCIÓN 2: SPOTIFY (Filtra solo las playlists verdes)
+          Padding(
+            padding: const EdgeInsets.only(left: 30, right: 15, bottom: 15),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "TUS FRECUENCIAS (SPOTIFY)",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: theme.textTheme.bodySmall?.color,
+                    fontSize: 11,
+                    letterSpacing: 2,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () =>
+                      _mostrarDialogoNuevoLink(context, ref, themeColor),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1DB954).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      "+ AÑADIR",
+                      style: TextStyle(
+                        color: Color(0xFF1DB954),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Consumer(
+              builder: (context, ref, child) {
+                final misLinks = ref.watch(customLinksProvider);
+                // 🧠 Filtramos SOLO los que son de Spotify
+                final spotifyLinks = misLinks
+                    .where((l) => l['tipo'] == 'spotify')
+                    .toList();
+
+                return Row(
+                  children: [
+                    _focusMediaCard(
+                      context,
+                      theme,
+                      "Deep Focus",
+                      "Spotify Default",
+                      "spotify:playlist:37i9dQZF1DWZeKCadgRdKQ",
+                      Icons.headset_rounded,
+                      const Color(0xFF1DB954),
+                      "spotify",
+                    ),
+                    ...spotifyLinks.map(
+                      (data) => _focusMediaCard(
+                        context,
+                        theme,
+                        data['titulo']!,
+                        "Mi Playlist",
+                        data['uri']!,
+                        Icons.library_music_rounded,
+                        const Color(0xFF1DB954),
+                        "spotify",
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 30),
+
+          // 🔴 SECCIÓN 3: VIDEOS (Filtra solo los videos de YouTube)
+          Padding(
+            padding: const EdgeInsets.only(left: 30, right: 15, bottom: 15),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "ESTUDIA CONMIGO (VISUAL)",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: theme.textTheme.bodySmall?.color,
+                    fontSize: 11,
+                    letterSpacing: 2,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () =>
+                      _mostrarDialogoNuevoLink(context, ref, themeColor),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      "+ AÑADIR",
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Consumer(
+              builder: (context, ref, child) {
+                final misLinks = ref.watch(customLinksProvider);
+                // 🧠 Filtramos SOLO los que son de YouTube
+                final youtubeLinks = misLinks
+                    .where((l) => l['tipo'] == 'youtube_video')
+                    .toList();
+
+                return Row(
+                  children: [
+                    _focusMediaCard(
+                      context,
+                      theme,
+                      "Minecraft Rain",
+                      "Video Default",
+                      "Fj-E_w2a64A",
+                      Icons.smart_display_rounded,
+                      Colors.redAccent,
+                      "youtube_video",
+                    ),
+                    ...youtubeLinks.map(
+                      (data) => _focusMediaCard(
+                        context,
+                        theme,
+                        data['titulo']!,
+                        "Mi Video",
+                        data['uri']!,
+                        Icons.smart_display_rounded,
+                        Colors.redAccent,
+                        "youtube_video",
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  // ✨ LA TARJETA QUE ABRE SPOTIFY O YOUTUBE
+  Widget _focusMediaCard(
+    BuildContext context,
+    ThemeData theme,
+    String title,
+    String subtitle,
+    String uri,
+    IconData icon,
+    Color color,
+    String tipo,
+  ) {
+    return GestureDetector(
+      onTap: () async {
+        HapticFeedback.selectionClick();
+
+        if (tipo == 'radio') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("📡 Sintonizando: $title..."),
+              duration: const Duration(seconds: 1),
+            ),
+          );
+          final station = RadioStation(
+            id: title.replaceAll(" ", "_").toLowerCase(),
+            name: title,
+            url: uri,
+            favicon: "",
+            tags: "lofi",
+            country: "Global",
+          );
+          PlayerManager.playRadio(station);
+        } else if (tipo == 'spotify') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("🟢 Abriendo Spotify...")),
+          );
+          final Uri url = Uri.parse(uri);
+          if (await canLaunchUrl(url)) {
+            await launchUrl(url, mode: LaunchMode.externalApplication);
+          }
+        } else if (tipo == 'youtube_video') {
+          showDialog(
+            context: context,
+            builder: (_) => YouTubeVideoModal(videoId: uri),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(right: 15),
+        width: 150,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                color: theme.textTheme.bodyLarge?.color,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: theme.textTheme.bodySmall?.color,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -901,83 +1168,222 @@ class PomodoroView extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Widget _liveRadioCard(
-    BuildContext context,
-    ThemeData theme,
-    String title,
-    String artist,
-    String url,
-    String imgUrl,
-    IconData icon,
-    Color color,
-  ) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        if (context.mounted)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("📡 Sintonizando: $title..."),
-              duration: const Duration(seconds: 1),
-            ),
-          );
-        final station = RadioStation(
-          id: title.replaceAll(" ", "_").toLowerCase(),
-          name: title,
-          url: url,
-          favicon: imgUrl,
-          tags: "lofi, focus",
-          country: "Global",
-        );
-        PlayerManager.playRadio(station);
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        width: 140,
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
+// ✨ DIÁLOGO INTELIGENTE (Detecta YouTube o Spotify automáticamente)
+void _mostrarDialogoNuevoLink(
+  BuildContext context,
+  WidgetRef ref,
+  Color themeColor,
+) {
+  final theme = Theme.of(context);
+  String nuevoTitulo = "";
+  String nuevoLink = "";
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        backgroundColor: theme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+        title: Row(
+          children: [
+            Icon(Icons.add_link_rounded, color: themeColor),
+            const SizedBox(width: 10),
+            Text(
+              "Vincular Frecuencia",
+              style: TextStyle(
+                color: theme.textTheme.bodyLarge?.color,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
+            TextField(
+              decoration: InputDecoration(
+                hintText: "Nombre (ej. Rap para programar)",
+                filled: true,
+                fillColor: Colors.black.withOpacity(0.1),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
               ),
-              child: Icon(icon, color: color, size: 22),
+              onChanged: (val) => nuevoTitulo = val,
             ),
-            const SizedBox(height: 15),
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                color: theme.textTheme.bodyLarge?.color,
-                fontSize: 14,
+            const SizedBox(height: 10),
+            TextField(
+              decoration: InputDecoration(
+                hintText: "Pega enlace de Spotify o YouTube...",
+                filled: true,
+                fillColor: Colors.black.withOpacity(0.1),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide.none,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              artist,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: theme.textTheme.bodySmall?.color,
-                fontSize: 10,
-              ),
+              onChanged: (val) => nuevoLink = val,
             ),
           ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: themeColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () {
+              if (nuevoTitulo.isNotEmpty && nuevoLink.isNotEmpty) {
+                String tipoDetectado = 'spotify';
+                String uriFinal = nuevoLink;
+
+                // 🧠 CEREBRO: Detectar si es video de YouTube
+                if (nuevoLink.contains("youtube.com") ||
+                    nuevoLink.contains("youtu.be")) {
+                  tipoDetectado = 'youtube_video';
+                }
+                // 🧠 CEREBRO: Limpiar el link si es Spotify
+                else if (nuevoLink.contains("spotify.com")) {
+                  try {
+                    final partes = nuevoLink
+                        .split("spotify.com/")[1]
+                        .split("?")[0]
+                        .split("/");
+                    final tipo = partes[0];
+                    final id = partes[1];
+                    uriFinal = "spotify:$tipo:$id";
+                  } catch (e) {
+                    uriFinal = nuevoLink;
+                  }
+                }
+
+                // Guardar con el TIPO correcto para que vaya a su sección
+                ref
+                    .read(customLinksProvider.notifier)
+                    .update(
+                      (state) => [
+                        ...state,
+                        {
+                          'titulo': nuevoTitulo,
+                          'uri': uriFinal,
+                          'tipo': tipoDetectado,
+                        },
+                      ],
+                    );
+
+                HapticFeedback.heavyImpact();
+                Navigator.pop(context);
+              }
+            },
+            child: const Text(
+              "Fijar",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+// ==========================================
+// --- REPRODUCTOR VISUAL (MINI VLC YOUTUBE) ---
+// ==========================================
+class YouTubeVideoModal extends StatefulWidget {
+  final String videoId;
+  const YouTubeVideoModal({super.key, required this.videoId});
+
+  @override
+  State<YouTubeVideoModal> createState() => _YouTubeVideoModalState();
+}
+
+class _YouTubeVideoModalState extends State<YouTubeVideoModal> {
+  late YoutubePlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final vId = YoutubePlayer.convertUrlToId(widget.videoId) ?? widget.videoId;
+
+    _controller = YoutubePlayerController(
+      initialVideoId: vId,
+      flags: const YoutubePlayerFlags(
+        autoPlay: true,
+        mute: false,
+        loop: true,
+        hideControls: false,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(15),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(25),
+        child: Container(
+          color: Colors.black,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: 10,
+                ),
+                color: Colors.black87,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Estudia Conmigo",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              YoutubePlayer(
+                controller: _controller,
+                showVideoProgressIndicator: true,
+                progressIndicatorColor: Colors.redAccent,
+                progressColors: const ProgressBarColors(
+                  playedColor: Colors.redAccent,
+                  handleColor: Colors.redAccent,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

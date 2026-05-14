@@ -75,6 +75,26 @@ class PlayerManager {
   static final ValueNotifier<int> repeatMode = ValueNotifier(0);
 
   static Timer? _spotifyTimer;
+  // ✨ LA LLAVE DE CONEXIÓN A SPOTIFY
+  static Future<void> connectToSpotify() async {
+    try {
+      // Intentamos enlazar TecConnection con la app de Spotify en el celular
+      final bool result = await SpotifySdk.connectToSpotifyRemote(
+        clientId:
+            "TU_CLIENT_ID", // 🚨 Pon aquí tu Client ID de Spotify de tu ApiKeys
+        redirectUrl: "TU_REDIRECT_URL", // 🚨 Pon aquí tu Redirect URL
+      );
+
+      isSpotifyLinked.value = result;
+
+      if (result) {
+        debugPrint("✅ ¡Spotify enlazado con éxito!");
+        startSpotifyRadar(); // Encendemos el radar en cuanto se conecta
+      }
+    } catch (e) {
+      debugPrint("❌ Error al enlazar Spotify: $e");
+    }
+  }
 
   // REORDENAR LA COLA
   static void reorderQueue(int oldIndex, int newIndex) {
@@ -123,12 +143,9 @@ class PlayerManager {
     });
   }
 
-  // ✨ EL ESCÁNER DE METADATOS PREMIUM (Solo canciones de verdad)
   static Future<void> loadLocalMusic() async {
-    bool hasPermission = await audioQuery.permissionsStatus();
-    if (!hasPermission) hasPermission = await audioQuery.permissionsRequest();
-
-    if (hasPermission) {
+    try {
+      // 1. Pedimos a la librería que busque TODO lo que sea audio
       List<SongModel> songs = await audioQuery.querySongs(
         sortType: null,
         orderType: OrderType.ASC_OR_SMALLER,
@@ -136,25 +153,27 @@ class PlayerManager {
         ignoreCase: true,
       );
 
-      // Filtro de Calidad: Descartamos audios menores a 30 segundos (tonos, notas de voz)
-      await audioQuery.querySongs(
-        sortType: null,
-        orderType: OrderType.ASC_OR_SMALLER,
-        uriType: UriType.EXTERNAL,
-        ignoreCase: true,
-      );
-
-      // ✨ FILTRO ESTRICTO: Solo audios largos Y que estén en tu carpeta de música
+      // 2. FILTRO LIBRE:
+      // Mostramos todo lo que tenga formato de audio conocido
+      // y eliminamos el filtro de duración para no perder nada.
       songs = songs.where((song) {
-        final bool isLongEnough = (song.duration ?? 0) > 30000; // Más de 30 seg
-        // Filtramos para que solo tome de la carpeta Music o TecConnection
-        final bool isInMusicFolder =
-            song.data.contains('/Music/') ||
-            song.data.contains('TecConnection');
-        return isLongEnough && isInMusicFolder;
+        final dataStr = song.data.toLowerCase();
+        final isAudioExtension =
+            dataStr.endsWith('.mp3') ||
+            dataStr.endsWith('.m4a') ||
+            dataStr.endsWith('.wav') ||
+            dataStr.endsWith('.ogg');
+
+        // Si el archivo existe y es un audio, lo metemos a la lista
+        return isAudioExtension;
       }).toList();
 
       allLocalSongs.value = songs;
+      debugPrint(
+        "🎵 Escáner completado: Se encontraron ${songs.length} canciones.",
+      );
+    } catch (e) {
+      debugPrint("❌ Error cargando MP3: $e");
     }
   }
 

@@ -7,6 +7,8 @@ list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
   file_selector_windows
   firebase_core
+  flutter_inappwebview_windows
+  flutter_volume_controller
   permission_handler_windows
   record_windows
   url_launcher_windows

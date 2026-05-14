@@ -1,3 +1,5 @@
+import com.android.build.gradle.LibraryExtension
+
 allprojects {
     repositories {
         google()
@@ -29,5 +31,15 @@ buildscript {
     }
     dependencies {
         classpath("com.google.firebase:firebase-crashlytics-gradle:2.9.9")
+    }
+}
+// ✨ EL ESCUDO CONTRA PAQUETES DESACTUALIZADOS (Versión Instantánea)
+subprojects {
+    pluginManager.withPlugin("com.android.library") {
+        configure<com.android.build.gradle.LibraryExtension> {
+            if (namespace == null) {
+                namespace = project.group.toString()
+            }
+        }
     }
 }
