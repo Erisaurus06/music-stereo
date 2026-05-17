@@ -145,7 +145,7 @@ class PlayerManager {
 
   static Future<void> loadLocalMusic() async {
     try {
-      // 1. Pedimos a la librería que busque TODO lo que sea audio
+      // 1. Pedimos a la librería que busque
       List<SongModel> songs = await audioQuery.querySongs(
         sortType: null,
         orderType: OrderType.ASC_OR_SMALLER,
