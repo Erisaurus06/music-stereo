@@ -1,29 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:music_stereo/services/radio_engine.dart';
 import 'package:music_stereo/widgets/design_components.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'dart:ui';
 import 'collection_view.dart';
 import 'package:spotify_sdk/spotify_sdk.dart';
 
-// Importaciones de tu proyecto
 import '../services/player_manager.dart';
 import '../services/app_state.dart';
 import '../models/app_models.dart';
-import '../main.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:just_audio_background/just_audio_background.dart';
-import '../services/favorites_manager.dart';
-import '../services/player_manager.dart';
-import '../models/app_models.dart';
-import '../api_keys.dart';
 
-// --- 4. BIBLIOTECA CON BUSCADOR INTEGRADO ---
+// --- 4. BIBLIOTECA CON BUSCADOR Y SUPER FAVORITOS EN COLECCIONES ---
 class LibraryView extends StatefulWidget {
   const LibraryView({super.key});
   @override
@@ -33,10 +23,12 @@ class LibraryView extends StatefulWidget {
 class _LibraryViewState extends State<LibraryView>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  // ✨ CEREBRO DEL BUSCADOR INTEGRADO
   final TextEditingController _searchController = TextEditingController();
   final ValueNotifier<String> searchQuery = ValueNotifier("");
+
+  // ✨ CONTROLES EXCLUSIVOS PARA TRACKS MP3
+  bool _isMp3GridView = false;
+  bool _mp3SortAscending = true;
 
   @override
   void initState() {
@@ -52,7 +44,6 @@ class _LibraryViewState extends State<LibraryView>
     super.dispose();
   }
 
-  // ✨ VENTANA DE CREACIÓN (CÁMARA RESTAURADA)
   Future<void> _showCreatePlaylistDialog(
     ThemeData theme,
     CollectionType type,
@@ -77,12 +68,203 @@ class _LibraryViewState extends State<LibraryView>
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(context).viewInsets.bottom,
             ),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(40),
+              ),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  padding: const EdgeInsets.all(30),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor.withOpacity(0.85),
+                    border: Border(
+                      top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+                      Text(
+                        typeTitle,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: theme.textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+                      GestureDetector(
+                        onTap: () async {
+                          HapticFeedback.selectionClick();
+                          final XFile? image = await picker.pickImage(
+                            source: ImageSource.gallery,
+                          );
+                          if (image != null) {
+                            final directory =
+                                await getApplicationDocumentsDirectory();
+                            final String newPath =
+                                '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
+                            final File newImage = await File(
+                              image.path,
+                            ).copy(newPath);
+                            setModalState(() => imagePath = newImage.path);
+                          }
+                        },
+                        child: Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            color: theme.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            image: imagePath != null
+                                ? DecorationImage(
+                                    image: FileImage(File(imagePath!)),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                            border: Border.all(
+                              color: theme.primaryColor.withOpacity(0.5),
+                              width: 2,
+                            ),
+                            boxShadow: imagePath != null
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: imagePath == null
+                              ? Icon(
+                                  Icons.add_a_photo_rounded,
+                                  size: 40,
+                                  color: theme.primaryColor,
+                                )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      Text(
+                        imagePath == null
+                            ? "Toca para añadir portada"
+                            : "Portada lista",
+                        style: TextStyle(
+                          color: theme.textTheme.bodySmall?.color,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+                      TextField(
+                        onChanged: (v) => playlistName = v,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: theme.textTheme.bodyLarge?.color,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: "¿Cómo se llamará esta joya?",
+                          hintStyle: TextStyle(
+                            color: theme.textTheme.bodySmall?.color,
+                            fontWeight: FontWeight.normal,
+                          ),
+                          filled: true,
+                          fillColor: theme.scaffoldBackgroundColor.withOpacity(
+                            0.5,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.primaryColor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          onPressed: () {
+                            if (playlistName.trim().isEmpty) return;
+                            HapticFeedback.heavyImpact();
+                            final newCollection = AppCollection(
+                              id: DateTime.now().millisecondsSinceEpoch
+                                  .toString(),
+                              name: playlistName.trim(),
+                              imagePath: imagePath,
+                              type: type,
+                            );
+                            AppState.addCollection(newCollection);
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "✅ '$playlistName' guardada en colecciones.",
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          },
+                          child: const Text(
+                            "CREAR",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showSpotifyLinkDialog(ThemeData theme) async {
+    String playlistName = "";
+    String spotifyUrl = "";
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
               padding: const EdgeInsets.all(30),
               decoration: BoxDecoration(
-                color: theme.cardColor.withOpacity(0.95),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(40),
+                color: theme.cardColor.withOpacity(0.85),
+                border: Border(
+                  top: BorderSide(color: Colors.white.withOpacity(0.1)),
                 ),
               ),
               child: Column(
@@ -97,97 +279,54 @@ class _LibraryViewState extends State<LibraryView>
                     ),
                   ),
                   const SizedBox(height: 25),
-                  Text(
-                    typeTitle,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: theme.textTheme.bodyLarge?.color,
-                    ),
-                  ),
-                  const SizedBox(height: 25),
-
-                  // 📷 BOTÓN DE FOTO
-                  GestureDetector(
-                    onTap: () async {
-                      HapticFeedback.selectionClick();
-                      final XFile? image = await picker.pickImage(
-                        source: ImageSource.gallery,
-                      );
-                      if (image != null) {
-                        final directory =
-                            await getApplicationDocumentsDirectory();
-                        final String newPath =
-                            '${directory.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
-                        final File newImage = await File(
-                          image.path,
-                        ).copy(newPath);
-                        setModalState(() => imagePath = newImage.path);
-                      }
-                    },
-                    child: Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        color: theme.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        image: imagePath != null
-                            ? DecorationImage(
-                                image: FileImage(File(imagePath!)),
-                                fit: BoxFit.cover,
-                              )
-                            : null,
-                        border: Border.all(
-                          color: theme.primaryColor.withOpacity(0.5),
-                          width: 2,
-                        ),
-                        boxShadow: imagePath != null
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 10),
-                                ),
-                              ]
-                            : [],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.link_rounded,
+                        color: Color(0xFF1DB954),
+                        size: 30,
                       ),
-                      child: imagePath == null
-                          ? Icon(
-                              Icons.add_a_photo_rounded,
-                              size: 40,
-                              color: theme.primaryColor,
-                            )
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 15),
-                  Text(
-                    imagePath == null
-                        ? "Toca para añadir portada"
-                        : "Portada lista",
-                    style: TextStyle(
-                      color: theme.textTheme.bodySmall?.color,
-                      fontSize: 12,
-                    ),
+                      const SizedBox(width: 10),
+                      Text(
+                        "Enlace Externo",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: theme.textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 25),
-
                   TextField(
                     onChanged: (v) => playlistName = v,
-                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: theme.textTheme.bodyLarge?.color,
                     ),
                     decoration: InputDecoration(
-                      hintText: "¿Cómo se llamará esta joya?",
-                      hintStyle: TextStyle(
-                        color: theme.textTheme.bodySmall?.color,
-                        fontWeight: FontWeight.normal,
+                      hintText: "Ej. This is Billie Eilish",
+                      filled: true,
+                      fillColor: theme.scaffoldBackgroundColor.withOpacity(0.5),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  TextField(
+                    onChanged: (v) => spotifyUrl = v,
+                    style: TextStyle(color: theme.textTheme.bodyLarge?.color),
+                    decoration: InputDecoration(
+                      hintText: "Pega el link de Spotify aquí...",
+                      prefixIcon: const Icon(
+                        Icons.share_rounded,
+                        color: Colors.grey,
                       ),
                       filled: true,
-                      fillColor: theme.scaffoldBackgroundColor,
+                      fillColor: theme.scaffoldBackgroundColor.withOpacity(0.5),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
                         borderSide: BorderSide.none,
@@ -195,39 +334,43 @@ class _LibraryViewState extends State<LibraryView>
                     ),
                   ),
                   const SizedBox(height: 30),
-
                   SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.primaryColor,
+                        backgroundColor: const Color(0xFF1DB954),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
                       onPressed: () {
-                        if (playlistName.trim().isEmpty) return;
+                        if (playlistName.trim().isEmpty ||
+                            spotifyUrl.trim().isEmpty)
+                          return;
                         HapticFeedback.heavyImpact();
+                        String finalUri = spotifyUrl;
+                        if (spotifyUrl.contains("open.spotify.com")) {
+                          final parts = spotifyUrl.split("/");
+                          final idPart = parts.last.split("?").first;
+                          if (spotifyUrl.contains("playlist"))
+                            finalUri = "spotify:playlist:$idPart";
+                          if (spotifyUrl.contains("album"))
+                            finalUri = "spotify:album:$idPart";
+                          if (spotifyUrl.contains("artist"))
+                            finalUri = "spotify:artist:$idPart";
+                        }
                         final newCollection = AppCollection(
                           id: DateTime.now().millisecondsSinceEpoch.toString(),
                           name: playlistName.trim(),
-                          imagePath: imagePath,
-                          type: type,
+                          type: CollectionType.mix,
+                          songIds: [finalUri],
                         );
                         AppState.addCollection(newCollection);
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              "✅ '$playlistName' guardada en colecciones.",
-                            ),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
                       },
                       child: const Text(
-                        "CREAR",
+                        "VINCULAR SPOTIFY",
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -239,153 +382,6 @@ class _LibraryViewState extends State<LibraryView>
                 ],
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  // ✨ VENTANA DE ACCESOS DIRECTOS DE SPOTIFY
-  Future<void> _showSpotifyLinkDialog(ThemeData theme) async {
-    String playlistName = "";
-    String spotifyUrl = "";
-
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(30),
-          decoration: BoxDecoration(
-            color: theme.cardColor.withOpacity(0.95),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 50,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.grey.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 25),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.link_rounded,
-                    color: Color(0xFF1DB954),
-                    size: 30,
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    "Enlace Externo",
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      color: theme.textTheme.bodyLarge?.color,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 25),
-
-              TextField(
-                onChanged: (v) => playlistName = v,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: theme.textTheme.bodyLarge?.color,
-                ),
-                decoration: InputDecoration(
-                  hintText: "Ej. This is Billie Eilish",
-                  filled: true,
-                  fillColor: theme.scaffoldBackgroundColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 15),
-
-              TextField(
-                onChanged: (v) => spotifyUrl = v,
-                style: TextStyle(color: theme.textTheme.bodyLarge?.color),
-                decoration: InputDecoration(
-                  hintText: "Pega el link de Spotify aquí...",
-                  prefixIcon: const Icon(
-                    Icons.share_rounded,
-                    color: Colors.grey,
-                  ),
-                  filled: true,
-                  fillColor: theme.scaffoldBackgroundColor,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1DB954),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  onPressed: () {
-                    if (playlistName.trim().isEmpty ||
-                        spotifyUrl.trim().isEmpty) {
-                      return;
-                    }
-                    HapticFeedback.heavyImpact();
-
-                    String finalUri = spotifyUrl;
-                    if (spotifyUrl.contains("open.spotify.com")) {
-                      final parts = spotifyUrl.split("/");
-                      final idPart = parts.last.split("?").first;
-                      if (spotifyUrl.contains("playlist")) {
-                        finalUri = "spotify:playlist:$idPart";
-                      }
-                      if (spotifyUrl.contains("album")) {
-                        finalUri = "spotify:album:$idPart";
-                      }
-                      if (spotifyUrl.contains("artist")) {
-                        finalUri = "spotify:artist:$idPart";
-                      }
-                    }
-
-                    final newCollection = AppCollection(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      name: playlistName.trim(),
-                      type: CollectionType.mix,
-                      songIds: [finalUri],
-                    );
-                    AppState.addCollection(newCollection);
-                    Navigator.pop(context);
-                  },
-                  child: const Text(
-                    "VINCULAR SPOTIFY",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ),
-              ),
-            ],
           ),
         ),
       ),
@@ -412,8 +408,6 @@ class _LibraryViewState extends State<LibraryView>
               ),
             ),
           ),
-
-          // 🔎 NUEVA BARRA DE BÚSQUEDA INTEGRADA
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
             child: Container(
@@ -467,7 +461,6 @@ class _LibraryViewState extends State<LibraryView>
             ),
           ),
           const SizedBox(height: 10),
-
           TabBar(
             controller: _tabController,
             indicatorColor: theme.primaryColor,
@@ -496,7 +489,7 @@ class _LibraryViewState extends State<LibraryView>
     );
   }
 
-  // 🎵 LISTA DE MP3 FILTRADA
+  // 🎵 SECCIÓN MP3 (AHORA CON CONTROLES A-Z Y VISTA GRID)
   Widget _buildMp3List(ThemeData theme) {
     return ValueListenableBuilder<String>(
       valueListenable: searchQuery,
@@ -504,7 +497,6 @@ class _LibraryViewState extends State<LibraryView>
         return ValueListenableBuilder<List<SongModel>>(
           valueListenable: PlayerManager.allLocalSongs,
           builder: (context, allSongs, _) {
-            // Filtrar las canciones según la búsqueda
             final songs = allSongs
                 .where(
                   (s) =>
@@ -515,140 +507,330 @@ class _LibraryViewState extends State<LibraryView>
                 )
                 .toList();
 
-            if (songs.isEmpty) {
-              return Center(
-                child: Text(
-                  query.isEmpty
-                      ? "Cargando ADN Musical..."
-                      : "No se encontró '$query'",
-                  style: TextStyle(
-                    color: theme.textTheme.bodyMedium?.color,
-                    fontWeight: FontWeight.bold,
+            // ✨ ORDENAR LA LISTA (A-Z o Z-A)
+            songs.sort((a, b) {
+              int cmp = a.title.toLowerCase().compareTo(b.title.toLowerCase());
+              return _mp3SortAscending ? cmp : -cmp;
+            });
+
+            return CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // CONTROLES DE LA CARPETA
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.cardColor,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _mp3SortAscending = !_mp3SortAscending;
+                            });
+                            HapticFeedback.lightImpact();
+                          },
+                          icon: Icon(
+                            _mp3SortAscending
+                                ? Icons.keyboard_arrow_down_rounded
+                                : Icons.keyboard_arrow_up_rounded,
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                          label: Text(
+                            _mp3SortAscending ? "De A a Z" : "De Z a A",
+                            style: TextStyle(
+                              color: theme.textTheme.bodyLarge?.color,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            _isMp3GridView
+                                ? Icons.view_list_rounded
+                                : Icons.grid_view_rounded,
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isMp3GridView = !_isMp3GridView;
+                            });
+                            HapticFeedback.selectionClick();
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              );
-            }
 
-            return ListView.builder(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.only(top: 10, bottom: 180),
-              itemCount: songs.length,
-              itemBuilder: (context, i) {
-                final song = songs[i];
-                return ValueListenableBuilder<SongModel?>(
-                  valueListenable: PlayerManager.currentSong,
-                  builder: (context, currentSong, _) {
-                    final isPlayingThis =
-                        currentSong?.id == song.id &&
-                        PlayerManager.activeEngine.value !=
-                            AudioEngineType.spotify;
-                    return InkWell(
-                      onTap: () {
-                        FocusScope.of(context).unfocus();
-                        PlayerManager.playSong(song);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isPlayingThis
-                              ? theme.primaryColor.withOpacity(0.1)
-                              : theme.cardColor,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: SizedBox(
-                              width: 50,
-                              height: 50,
-                              child: HybridArtworkWidget(
-                                artworkData: song.id,
-                                title: song.title,
-                                artist: song.artist ?? "Desconocido",
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            song.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: isPlayingThis
-                                  ? theme.primaryColor
-                                  : theme.textTheme.bodyLarge?.color,
-                            ),
-                          ),
-                          subtitle: Text(
-                            song.artist ?? "Artista Desconocido",
-                            maxLines: 1,
-                            style: TextStyle(
-                              color: theme.textTheme.bodySmall?.color,
-                              fontSize: 13,
-                            ),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (isPlayingThis)
-                                Icon(
-                                  Icons.bar_chart_rounded,
-                                  color: theme.primaryColor,
-                                ),
-
-                              // ❤️ BOTÓN DE FAVORITO REACTIVO
-                              ValueListenableBuilder<List<String>>(
-                                valueListenable: AppState.favoriteSongs,
-                                builder: (context, favorites, _) {
-                                  final isFav = favorites.contains(
-                                    song.id.toString(),
-                                  );
-                                  return IconButton(
-                                    icon: AnimatedSwitcher(
-                                      duration: const Duration(
-                                        milliseconds: 300,
-                                      ),
-                                      transitionBuilder: (child, animation) =>
-                                          ScaleTransition(
-                                            scale: animation,
-                                            child: child,
-                                          ),
-                                      child: Icon(
-                                        isFav
-                                            ? Icons.favorite_rounded
-                                            : Icons.favorite_border_rounded,
-                                        key: ValueKey<bool>(isFav),
-                                        color: isFav
-                                            ? Colors.redAccent
-                                            : Colors.grey.withOpacity(0.5),
-                                        size: 24,
-                                      ),
-                                    ),
-                                    onPressed: () {
-                                      HapticFeedback.selectionClick();
-                                      AppState.toggleFavoriteSong(
-                                        song.id.toString(),
-                                      );
-                                    },
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
+                if (songs.isEmpty)
+                  SliverFillRemaining(
+                    child: Center(
+                      child: Text(
+                        query.isEmpty
+                            ? "Cargando ADN Musical..."
+                            : "No se encontró '$query'",
+                        style: TextStyle(
+                          color: theme.textTheme.bodyMedium?.color,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    );
-                  },
-                );
-              },
+                    ),
+                  )
+                else if (_isMp3GridView)
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverGrid(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 15,
+                            mainAxisSpacing: 15,
+                            childAspectRatio: 0.8,
+                          ),
+                      delegate: SliverChildBuilderDelegate((context, i) {
+                        final song = songs[i];
+                        return GestureDetector(
+                          onTap: () {
+                            FocusScope.of(context).unfocus();
+                            PlayerManager.playSong(song);
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: theme.cardColor,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(20),
+                                    ),
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      child: HybridArtworkWidget(
+                                        artworkData: song.id,
+                                        title: song.title,
+                                        artist: song.artist ?? "",
+                                        isFullSize: true,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        song.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          color:
+                                              theme.textTheme.bodyLarge?.color,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              song.artist ?? "Desconocido",
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 10,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                          ),
+                                          ValueListenableBuilder<List<String>>(
+                                            valueListenable:
+                                                AppState.favoriteSongs,
+                                            builder: (context, favorites, _) {
+                                              final isFav = favorites.contains(
+                                                song.id.toString(),
+                                              );
+                                              return GestureDetector(
+                                                onTap: () {
+                                                  HapticFeedback.selectionClick();
+                                                  AppState.toggleFavoriteSong(
+                                                    song.id.toString(),
+                                                  );
+                                                },
+                                                child: Icon(
+                                                  isFav
+                                                      ? Icons.favorite_rounded
+                                                      : Icons
+                                                            .favorite_border_rounded,
+                                                  color: isFav
+                                                      ? Colors.redAccent
+                                                      : Colors.grey.withOpacity(
+                                                          0.5,
+                                                        ),
+                                                  size: 16,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }, childCount: songs.length),
+                    ),
+                  )
+                else
+                  SliverList(
+                    delegate: SliverChildBuilderDelegate((context, i) {
+                      final song = songs[i];
+                      return ValueListenableBuilder<SongModel?>(
+                        valueListenable: PlayerManager.currentSong,
+                        builder: (context, currentSong, _) {
+                          final isPlayingThis =
+                              currentSong?.id == song.id &&
+                              PlayerManager.activeEngine.value !=
+                                  AudioEngineType.spotify;
+                          return InkWell(
+                            onTap: () {
+                              FocusScope.of(context).unfocus();
+                              PlayerManager.playSong(song);
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isPlayingThis
+                                    ? theme.primaryColor.withOpacity(0.1)
+                                    : theme.cardColor,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                leading: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: SizedBox(
+                                    width: 50,
+                                    height: 50,
+                                    child: HybridArtworkWidget(
+                                      artworkData: song.id,
+                                      title: song.title,
+                                      artist: song.artist ?? "Desconocido",
+                                    ),
+                                  ),
+                                ),
+                                title: Text(
+                                  song.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: isPlayingThis
+                                        ? theme.primaryColor
+                                        : theme.textTheme.bodyLarge?.color,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  song.artist ?? "Artista Desconocido",
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                    color: theme.textTheme.bodySmall?.color,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isPlayingThis)
+                                      Icon(
+                                        Icons.bar_chart_rounded,
+                                        color: theme.primaryColor,
+                                      ),
+                                    ValueListenableBuilder<List<String>>(
+                                      valueListenable: AppState.favoriteSongs,
+                                      builder: (context, favorites, _) {
+                                        final isFav = favorites.contains(
+                                          song.id.toString(),
+                                        );
+                                        return IconButton(
+                                          icon: AnimatedSwitcher(
+                                            duration: const Duration(
+                                              milliseconds: 300,
+                                            ),
+                                            transitionBuilder:
+                                                (child, animation) =>
+                                                    ScaleTransition(
+                                                      scale: animation,
+                                                      child: child,
+                                                    ),
+                                            child: Icon(
+                                              isFav
+                                                  ? Icons.favorite_rounded
+                                                  : Icons
+                                                        .favorite_border_rounded,
+                                              key: ValueKey<bool>(isFav),
+                                              color: isFav
+                                                  ? Colors.redAccent
+                                                  : Colors.grey.withOpacity(
+                                                      0.5,
+                                                    ),
+                                              size: 24,
+                                            ),
+                                          ),
+                                          onPressed: () {
+                                            HapticFeedback.selectionClick();
+                                            AppState.toggleFavoriteSong(
+                                              song.id.toString(),
+                                            );
+                                          },
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }, childCount: songs.length),
+                  ),
+                const SliverToBoxAdapter(child: SizedBox(height: 180)),
+              ],
             );
           },
         );
@@ -656,17 +838,85 @@ class _LibraryViewState extends State<LibraryView>
     );
   }
 
-  // 📂 COLECCIONES FILTRADAS
+  // 📂 COLECCIONES (AHORA CON "MIS IMPRESCINDIBLES" AQUÍ)
   Widget _buildCollectionsTab(ThemeData theme) {
     return ValueListenableBuilder<String>(
       valueListenable: searchQuery,
       builder: (context, query, _) {
         return ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           children: [
-            // Ocultar botones de creación si el usuario está buscando algo
             if (query.isEmpty) ...[
+              // ✨ EL BOTÓN DE FAVORITOS AHORA VIVE EN COLECCIONES
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SuperFavoritesFolderView(),
+                    ),
+                  );
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Colors.deepPurpleAccent, Colors.redAccent],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.redAccent.withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    leading: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.favorite_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    title: const Text(
+                      "Mis Imprescindibles",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                      ),
+                    ),
+                    subtitle: ValueListenableBuilder<List<String>>(
+                      valueListenable: AppState.favoriteSongs,
+                      builder: (context, favs, _) => Text(
+                        "${favs.length} tracks locales",
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 25),
+
               _buildCreationButton(
                 theme: theme,
                 title: "Crear Playlist",
@@ -717,11 +967,9 @@ class _LibraryViewState extends State<LibraryView>
               const SizedBox(height: 20),
             ],
 
-            // RENDERIZADO DINÁMICO DE COLECCIONES
             ValueListenableBuilder<List<AppCollection>>(
               valueListenable: AppState.myCollections,
               builder: (context, allCollections, _) {
-                // Filtrar las colecciones según la búsqueda
                 final collections = allCollections
                     .where(
                       (c) => c.name.toLowerCase().contains(query.toLowerCase()),
@@ -768,7 +1016,6 @@ class _LibraryViewState extends State<LibraryView>
                       onTap: () {
                         HapticFeedback.selectionClick();
                         FocusScope.of(context).unfocus();
-
                         if (collection.songIds.isNotEmpty &&
                             collection.songIds.first.startsWith("spotify:")) {
                           PlayerManager.activeEngine.value =
@@ -942,197 +1189,161 @@ class _LibraryViewState extends State<LibraryView>
   }
 }
 
-class FavoritesProView extends StatelessWidget {
-  const FavoritesProView({super.key});
+// ✨ LA SÚPER CARPETA DE MP3 FAVORITOS (VISTA SIMPLE SIN CONTROLES)
+class SuperFavoritesFolderView extends StatelessWidget {
+  const SuperFavoritesFolderView({super.key});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          "Mis Favoritos",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            color: theme.textTheme.bodyLarge?.color,
-            letterSpacing: -0.5,
-          ),
-        ),
-        centerTitle: false,
-      ),
-      body: ValueListenableBuilder<List<Map<String, dynamic>>>(
-        valueListenable: FavoritesManager.favoriteItems,
-        builder: (context, favs, _) {
-          if (favs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.heart_broken_rounded,
-                    size: 80,
-                    color: theme.dividerColor,
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    "Tu bóveda está vacía",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: theme.textTheme.bodyMedium?.color,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: ValueListenableBuilder<List<String>>(
+        valueListenable: AppState.favoriteSongs,
+        builder: (context, favIds, _) {
+          List<SongModel> favSongs = PlayerManager.allLocalSongs.value
+              .where((song) => favIds.contains(song.id.toString()))
+              .toList();
+
+          return CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              SliverAppBar(
+                expandedHeight: 250,
+                pinned: true,
+                stretch: true,
+                backgroundColor: theme.scaffoldBackgroundColor,
+                leading: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    "Toca el corazón en el reproductor\npara guardar música aquí.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
+                ),
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topRight,
+                            end: Alignment.bottomLeft,
+                            colors: [Colors.deepPurpleAccent, Colors.redAccent],
+                          ),
+                        ),
+                      ),
+                      Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(height: 40),
+                            const Icon(
+                              Icons.favorite_rounded,
+                              color: Colors.white,
+                              size: 70,
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              "Imprescindibles",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -1,
+                              ),
+                            ),
+                            Text(
+                              "${favSongs.length} Pistas Locales",
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            );
-          }
 
-          return ListView.builder(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: 100, top: 10),
-            itemCount: favs.length,
-            itemBuilder: (context, index) {
-              // Invertimos la lista para que los más nuevos salgan arriba
-              final item = favs[favs.length - 1 - index];
-              final isRadio =
-                  item['type'] == 'radio' ||
-                  item['type'] == 'AudioEngineType.radio';
+              if (favSongs.isEmpty)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Text(
+                      "Aún no tienes favoritos locales.",
+                      style: TextStyle(
+                        color: theme.textTheme.bodyMedium?.color,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final song = favSongs[index];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 4,
+                      ),
+                      leading: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: SizedBox(
+                          width: 45,
+                          height: 45,
+                          child: HybridArtworkWidget(
+                            artworkData: song.id,
+                            title: song.title,
+                            artist: song.artist ?? "",
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        song.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: theme.textTheme.bodyLarge?.color,
+                        ),
+                      ),
+                      subtitle: Text(
+                        song.artist ?? "Desconocido",
+                        maxLines: 1,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(
+                          Icons.favorite_rounded,
+                          color: Colors.redAccent,
+                        ),
+                        onPressed: () {
+                          AppState.toggleFavoriteSong(song.id.toString());
+                          HapticFeedback.lightImpact();
+                        },
+                      ),
+                      onTap: () => PlayerManager.playSong(song),
+                    );
+                  }, childCount: favSongs.length),
+                ),
 
-              return DismissibleFavoriteTile(
-                item: item,
-                isRadio: isRadio,
-                theme: theme,
-              );
-            },
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
           );
         },
-      ),
-    );
-  }
-}
-
-class DismissibleFavoriteTile extends StatelessWidget {
-  final Map<String, dynamic> item;
-  final bool isRadio;
-  final ThemeData theme;
-
-  const DismissibleFavoriteTile({
-    super.key,
-    required this.item,
-    required this.isRadio,
-    required this.theme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Dismissible(
-      key: Key(item['id']),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 30),
-        color: Colors.redAccent,
-        child: const Icon(
-          Icons.delete_sweep_rounded,
-          color: Colors.white,
-          size: 30,
-        ),
-      ),
-      onDismissed: (direction) {
-        HapticFeedback.mediumImpact();
-        FavoritesManager.toggleFavorite(
-          item['id'],
-          item['title'],
-          item['artist'],
-          item['type'],
-        );
-      },
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: isRadio
-                ? Colors.redAccent.withOpacity(0.2)
-                : Colors.deepPurpleAccent.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(
-            isRadio ? Icons.radio_rounded : Icons.music_note_rounded,
-            color: isRadio ? Colors.redAccent : Colors.deepPurpleAccent,
-          ),
-        ),
-        title: Text(
-          item['title'],
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: theme.textTheme.bodyLarge?.color,
-          ),
-        ),
-        subtitle: Text(
-          isRadio
-              ? "Radio en Vivo • ${item['artist']}"
-              : "Pista Local • ${item['artist']}",
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        trailing: IconButton(
-          icon: const Icon(
-            Icons.play_circle_fill_rounded,
-            color: Colors.grey,
-            size: 35,
-          ),
-          onPressed: () async {
-            HapticFeedback.lightImpact();
-
-            // LÓGICA DE REPRODUCCIÓN DESDE FAVORITOS
-            if (isRadio) {
-              final station = RadioStation(
-                id: item['id'],
-                name: item['title'],
-                url:
-                    item['url'] ??
-                    "https://stream.zeno.fm/f3wvbbqmdg8uv", // Fallback a Lofi Girl si no hay URL
-                favicon: item['imageUrl'] ?? "",
-                tags: "favorite",
-                country: "Local",
-              );
-              PlayerManager.playRadio(station);
-            } else {
-              // Lógica de MP3 Supabase
-              PlayerManager.activeEngine.value = AudioEngineType.local;
-              PlayerManager.currentTitle.value = item['title'];
-              PlayerManager.currentArtist.value = item['artist'];
-              PlayerManager.isPlaying.value = true;
-
-              final String fileUrl =
-                  "${ApiKeys.supabaseUrl}/storage/v1/object/public/lofi_sounds/${item['id']}";
-              final audioSource = AudioSource.uri(
-                Uri.parse(fileUrl),
-                tag: MediaItem(
-                  id: item['id'],
-                  title: item['title'],
-                  artist: item['artist'],
-                ),
-              );
-              await PlayerManager.player.setAudioSource(audioSource);
-              PlayerManager.player.play();
-            }
-          },
-        ),
       ),
     );
   }

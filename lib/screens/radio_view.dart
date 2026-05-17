@@ -5,7 +5,7 @@ import '../services/app_state.dart';
 import '../services/player_manager.dart';
 import '../models/app_models.dart';
 
-// --- 📻 VISTA DE RADIO GLOBAL (CON FAVORITOS) ---
+// --- 📻 VISTA DE RADIO GLOBAL (CON FAVORITOS PERMANENTES) ---
 class RadioView extends StatefulWidget {
   const RadioView({super.key});
 
@@ -19,7 +19,7 @@ class _RadioViewState extends State<RadioView>
   final TextEditingController _searchController = TextEditingController();
   final ValueNotifier<String> searchQuery = ValueNotifier("");
 
-  // ✨ LA BASE DE DATOS REAL CONECTADA AL MOTOR
+  // Búsquedas temporales de la API
   List<RadioStation> _apiStations = [];
   bool _isLoading = true;
 
@@ -157,14 +157,17 @@ class _RadioViewState extends State<RadioView>
   }
 
   Widget _buildRadioList(ThemeData theme, {required bool isFavoritesTab}) {
-    if (_isLoading && !isFavoritesTab)
+    if (_isLoading && !isFavoritesTab) {
       return const Center(child: CircularProgressIndicator());
+    }
 
-    return ValueListenableBuilder<List<String>>(
-      valueListenable: AppState.favoriteRadios!,
-      builder: (context, favorites, _) {
+    // ✨ MAGIA: Ahora escuchamos la memoria real de PlayerManager, no un filtro temporal
+    return ValueListenableBuilder<List<RadioStation>>(
+      valueListenable: PlayerManager.favoriteRadios,
+      builder: (context, favoritesList, _) {
+        // 🧠 CEREBRO: Si es favoritos, muestra la memoria permanente. Si es explorar, muestra la API temporal.
         List<RadioStation> radiosToShow = isFavoritesTab
-            ? _apiStations.where((r) => favorites.contains(r.name)).toList()
+            ? favoritesList
             : _apiStations;
 
         if (radiosToShow.isEmpty) {
@@ -190,41 +193,21 @@ class _RadioViewState extends State<RadioView>
           itemCount: radiosToShow.length,
           itemBuilder: (context, index) {
             final radio = radiosToShow[index];
-            return _radioCard(
-              theme,
-              radio.name,
-              radio.url,
-              radio.favicon,
-              radio.country,
-              favorites.contains(radio.name),
-            );
+            // Verificamos si la tarjeta actual existe en la base de datos de favoritos
+            bool isFav = favoritesList.any((fav) => fav.id == radio.id);
+
+            return _radioCard(theme, radio, isFav);
           },
         );
       },
     );
   }
 
-  Widget _radioCard(
-    ThemeData theme,
-    String title,
-    String url,
-    String imagePath,
-    String country,
-    bool isFav,
-  ) {
+  Widget _radioCard(ThemeData theme, RadioStation radio, bool isFav) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
-        PlayerManager.playRadio(
-          RadioStation(
-            id: title,
-            name: title,
-            url: url,
-            favicon: imagePath,
-            country: country,
-            tags: '',
-          ),
-        );
+        PlayerManager.playRadio(radio);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
@@ -241,8 +224,8 @@ class _RadioViewState extends State<RadioView>
           leading: ClipRRect(
             borderRadius: BorderRadius.circular(15),
             child: Image.network(
-              imagePath.isNotEmpty
-                  ? imagePath
+              radio.favicon.isNotEmpty
+                  ? radio.favicon
                   : 'https://via.placeholder.com/150',
               width: 55,
               height: 55,
@@ -256,7 +239,7 @@ class _RadioViewState extends State<RadioView>
             ),
           ),
           title: Text(
-            title,
+            radio.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -266,7 +249,7 @@ class _RadioViewState extends State<RadioView>
             ),
           ),
           subtitle: Text(
-            country.isNotEmpty ? country : "Global",
+            radio.country.isNotEmpty ? radio.country : "Global",
             maxLines: 1,
             style: TextStyle(
               color: theme.primaryColor,
@@ -281,7 +264,8 @@ class _RadioViewState extends State<RadioView>
             ),
             onPressed: () {
               HapticFeedback.selectionClick();
-              AppState.toggleFavoriteRadio(title);
+              // ✨ GUARDAMOS EL OBJETO COMPLETO EN LA MEMORIA, NO SOLO EL NOMBRE
+              PlayerManager.toggleRadioFavorite(radio);
             },
           ),
         ),

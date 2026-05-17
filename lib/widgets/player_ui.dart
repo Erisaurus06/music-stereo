@@ -12,7 +12,7 @@ import 'package:audio_session/audio_session.dart';
 import 'package:app_settings/app_settings.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:interactive_slider/interactive_slider.dart';
-// Importaciones de tus otras carpetas
+
 import '../models/app_models.dart';
 import '../services/player_manager.dart';
 import '../services/app_state.dart';
@@ -21,7 +21,7 @@ import 'design_components.dart';
 import 'package:perfect_volume_control/perfect_volume_control.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
-// --- 7. REPRODUCTOR GIGANTE (UX MEJORADO: CONTRASTE Y MODO CLARO) ---
+// --- 7. REPRODUCTOR GIGANTE (UX MEJORADO: CRISTAL Y CONTRASTE DINÁMICO) ---
 class FullPlayerModal extends StatelessWidget {
   const FullPlayerModal({super.key});
 
@@ -36,8 +36,6 @@ class FullPlayerModal extends StatelessWidget {
     "The Mountain",
   ];
 
-  get PerfectVolumeControl => null;
-
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<Color>(
@@ -45,24 +43,19 @@ class FullPlayerModal extends StatelessWidget {
       builder: (context, themeColor, _) {
         final double statusBarHeight = MediaQuery.of(context).padding.top;
 
-        // 🧠 CEREBRO DE LUMINANCIA: Para el Modo Camaleón
+        // 🧠 CEREBRO DE LUMINOSIDAD: Si el color de la portada es demasiado oscuro,
+        // lo aclaramos artificialmente (subimos el lightness) para que nunca se pierda en negro.
         final HSLColor hslColor = HSLColor.fromColor(themeColor);
-        final Color safeThemeColor = hslColor.lightness < 0.3
-            ? hslColor.withLightness(0.4).toColor()
+        final Color safeThemeColor = hslColor.lightness < 0.35
+            ? hslColor.withLightness(0.45).toColor()
             : themeColor;
 
-        final bool isLightColor = safeThemeColor.computeLuminance() > 0.5;
+        // 🌗 CONTRASTE INTELIGENTE: Detectamos si el color final es claro u oscuro
+        // para decidir si pintamos los textos/iconos principales de Blanco o Negro.
+        final bool isLightColor = safeThemeColor.computeLuminance() > 0.45;
         final Color contrastIconColor = isLightColor
             ? Colors.black
             : Colors.white;
-
-        final double luminance = themeColor.computeLuminance();
-        final Color contrastColor = luminance < 0.5
-            ? Colors.white
-            : Colors.black;
-        final Color secondaryContrast = luminance < 0.5
-            ? Colors.white70
-            : Colors.black54;
 
         return Padding(
           padding: EdgeInsets.only(top: statusBarHeight + 15),
@@ -71,16 +64,20 @@ class FullPlayerModal extends StatelessWidget {
             child: ValueListenableBuilder<String>(
               valueListenable: AppState.playerLayout,
               builder: (context, layoutMode, _) {
-                // ☀️ DETECCIÓN DE MODO CLARO/OSCURO
                 final bool isLightMode =
                     Theme.of(context).brightness == Brightness.light;
 
-                // 🎨 LÓGICA DE COLORES BASE ADAPTATIVOS
                 Color bgColor = isLightMode ? Colors.white : Colors.black;
                 Color textColor = isLightMode ? Colors.black87 : Colors.white;
-                Color secondaryTextColor = isLightMode
+                Color dynSecondaryText = isLightMode
                     ? Colors.black54
-                    : Colors.white54;
+                    : Colors.white70;
+
+                // ✨ CRISTAL ADAPTATIVO: Si el fondo de la portada es claro, los botones de fondo
+                // se vuelven negro transparente. Si es oscuro, blanco transparente. ¡Impecable legibilidad!
+                Color glassBtnColor = isLightColor
+                    ? Colors.black.withOpacity(0.08)
+                    : Colors.white.withOpacity(0.15);
 
                 if (layoutMode == "Neo-Retro") {
                   bgColor = isLightMode
@@ -89,15 +86,13 @@ class FullPlayerModal extends StatelessWidget {
                 } else if (layoutMode == "Consola Oscura") {
                   bgColor = const Color(0xFF121212);
                   textColor = Colors.white;
-                  secondaryTextColor = Colors.white70;
+                  dynSecondaryText = Colors.white70;
+                  glassBtnColor = Colors.white.withOpacity(0.12);
                 } else if (layoutMode == "Cyberpunk Neón") {
                   bgColor = const Color(0xFF09090B);
                   textColor = Colors.white;
-                  secondaryTextColor = Colors.white54;
-                } else if (layoutMode == "Minimalista Zen") {
-                  bgColor = isLightMode
-                      ? const Color(0xFFF0F0F3)
-                      : const Color(0xFF1E1E1E);
+                  dynSecondaryText = Colors.white54;
+                  glassBtnColor = safeThemeColor.withOpacity(0.15);
                 }
 
                 return Scaffold(
@@ -110,104 +105,77 @@ class FullPlayerModal extends StatelessWidget {
                         builder: (context, backgroundStyle, _) {
                           return Stack(
                             children: [
-                              // --- CAPA 1: FONDOS AUTÉNTICOS ---
-                              if (layoutMode != "Minimalista Zen" &&
-                                  layoutMode != "Cyberpunk Neón") ...[
-                                if (layoutMode == "Consola Oscura")
-                                  Positioned.fill(
-                                    child: AnimatedContainer(
-                                      duration: const Duration(
-                                        milliseconds: 800,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            safeThemeColor.withOpacity(0.8),
-                                            bgColor,
-                                          ],
-                                          stops: const [0.0, 0.7],
-                                        ),
+                              // 🌌 FONDO DINÁMICO MEJORADO (MENOS BORROSO)
+                              if (layoutMode == "Cristal Inmersivo" ||
+                                  backgroundStyle == "Lámpara de Lava (Apple)")
+                                Positioned.fill(
+                                  child: RepaintBoundary(
+                                    child: ValueListenableBuilder<dynamic>(
+                                      valueListenable:
+                                          PlayerManager.currentArtwork,
+                                      builder: (context, art, _) => Stack(
+                                        children: [
+                                          Positioned.fill(
+                                            child: Transform.scale(
+                                              scale: 1.2,
+                                              child: HybridArtworkWidget(
+                                                artworkData: art,
+                                                title: PlayerManager
+                                                    .currentTitle
+                                                    .value,
+                                                artist: PlayerManager
+                                                    .currentArtist
+                                                    .value,
+                                                isFullSize: true,
+                                              ),
+                                            ),
+                                          ),
+                                          Positioned.fill(
+                                            child: BackdropFilter(
+                                              filter: ImageFilter.blur(
+                                                sigmaX: 35,
+                                                sigmaY: 35,
+                                              ),
+                                              child: Container(
+                                                color: Colors.transparent,
+                                              ),
+                                            ),
+                                          ),
+                                          Positioned.fill(
+                                            child: Container(
+                                              color: isLightColor
+                                                  ? Colors.white.withOpacity(
+                                                      0.4,
+                                                    )
+                                                  : Colors.black.withOpacity(
+                                                      0.5,
+                                                    ),
+                                            ),
+                                          ),
+                                          Positioned.fill(
+                                            child: Container(
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
+                                                  colors: [
+                                                    Colors.transparent,
+                                                    isLightColor
+                                                        ? Colors.white
+                                                              .withOpacity(0.9)
+                                                        : Colors.black
+                                                              .withOpacity(0.9),
+                                                  ],
+                                                  stops: const [0.4, 1.0],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
-
-                                if (layoutMode == "Cristal Inmersivo" ||
-                                    backgroundStyle ==
-                                        "Lámpara de Lava (Apple)")
-                                  Positioned.fill(
-                                    child: RepaintBoundary(
-                                      child: ValueListenableBuilder<dynamic>(
-                                        valueListenable:
-                                            PlayerManager.currentArtwork,
-                                        builder: (context, art, _) => Stack(
-                                          children: [
-                                            Positioned.fill(
-                                              child: Transform.scale(
-                                                scale: 1.5,
-                                                child: HybridArtworkWidget(
-                                                  artworkData: art,
-                                                  title: PlayerManager
-                                                      .currentTitle
-                                                      .value,
-                                                  artist: PlayerManager
-                                                      .currentArtist
-                                                      .value,
-                                                  isFullSize: true,
-                                                ),
-                                              ),
-                                            ),
-                                            Positioned.fill(
-                                              child: BackdropFilter(
-                                                filter: ImageFilter.blur(
-                                                  sigmaX: 90,
-                                                  sigmaY: 90,
-                                                ),
-                                                child: Container(
-                                                  color: Colors.transparent,
-                                                ),
-                                              ),
-                                            ),
-                                            Positioned.fill(
-                                              child: Container(
-                                                color: isLightMode
-                                                    ? Colors.white.withOpacity(
-                                                        0.4,
-                                                      )
-                                                    : Colors.black.withOpacity(
-                                                        0.5,
-                                                      ),
-                                              ),
-                                            ),
-                                            Positioned.fill(
-                                              child: Container(
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    begin: Alignment.topCenter,
-                                                    end: Alignment.bottomCenter,
-                                                    colors: [
-                                                      Colors.transparent,
-                                                      isLightMode
-                                                          ? Colors.white
-                                                                .withOpacity(
-                                                                  0.8,
-                                                                )
-                                                          : Colors.black
-                                                                .withOpacity(
-                                                                  0.8,
-                                                                ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                              ],
+                                ),
 
                               if (layoutMode == "Cyberpunk Neón")
                                 Positioned.fill(
@@ -221,9 +189,7 @@ class FullPlayerModal extends StatelessWidget {
                                   ),
                                 ),
 
-                              // --- CAPA 2: INTERFAZ PRINCIPAL ---
                               SafeArea(
-                                top: false,
                                 child: Column(
                                   children: [
                                     Padding(
@@ -240,7 +206,12 @@ class FullPlayerModal extends StatelessWidget {
                                           IconButton(
                                             icon: Icon(
                                               Icons.keyboard_arrow_down_rounded,
-                                              color: textColor,
+                                              color:
+                                                  isLightColor &&
+                                                      layoutMode ==
+                                                          "Cristal Inmersivo"
+                                                  ? Colors.black
+                                                  : textColor,
                                               size: 38,
                                             ),
                                             onPressed: () =>
@@ -298,7 +269,12 @@ class FullPlayerModal extends StatelessWidget {
                                               return Text(
                                                 layoutMode.toUpperCase(),
                                                 style: TextStyle(
-                                                  color: secondaryTextColor,
+                                                  color:
+                                                      isLightColor &&
+                                                          layoutMode ==
+                                                              "Cristal Inmersivo"
+                                                      ? Colors.black54
+                                                      : dynSecondaryText,
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w800,
                                                   letterSpacing: 2,
@@ -309,7 +285,12 @@ class FullPlayerModal extends StatelessWidget {
                                           IconButton(
                                             icon: Icon(
                                               Icons.queue_music_rounded,
-                                              color: textColor,
+                                              color:
+                                                  isLightColor &&
+                                                      layoutMode ==
+                                                          "Cristal Inmersivo"
+                                                  ? Colors.black
+                                                  : textColor,
                                               size: 28,
                                             ),
                                             onPressed: () {
@@ -327,7 +308,7 @@ class FullPlayerModal extends StatelessWidget {
                                       ),
                                     ),
 
-                                    // 🖼️ PORTADA GIGANTE
+                                    // PORTADA GIGANTE
                                     Expanded(
                                       child: Center(
                                         child: GestureDetector(
@@ -348,54 +329,48 @@ class FullPlayerModal extends StatelessWidget {
                                             valueListenable:
                                                 PlayerManager.isPlaying,
                                             builder: (context, playing, _) {
-                                              Widget artwork =
-                                                  ValueListenableBuilder<
-                                                    dynamic
-                                                  >(
-                                                    valueListenable:
-                                                        PlayerManager
-                                                            .currentArtwork,
-                                                    builder: (c, art, _) =>
-                                                        HybridArtworkWidget(
-                                                          artworkData: art,
-                                                          title: PlayerManager
-                                                              .currentTitle
-                                                              .value,
-                                                          artist: PlayerManager
-                                                              .currentArtist
-                                                              .value,
-                                                          isFullSize: true,
+                                              Widget
+                                              artwork = ValueListenableBuilder<dynamic>(
+                                                valueListenable: PlayerManager
+                                                    .currentArtwork,
+                                                builder: (c, art, _) =>
+                                                    AnimatedSwitcher(
+                                                      duration: const Duration(
+                                                        milliseconds: 600,
+                                                      ),
+                                                      transitionBuilder:
+                                                          (
+                                                            Widget child,
+                                                            Animation<double>
+                                                            animation,
+                                                          ) {
+                                                            return FadeTransition(
+                                                              opacity:
+                                                                  animation,
+                                                              child: child,
+                                                            );
+                                                          },
+                                                      child: HybridArtworkWidget(
+                                                        key: ValueKey(
+                                                          art?.toString() ??
+                                                              'empty',
                                                         ),
-                                                  );
+                                                        artworkData: art,
+                                                        title: PlayerManager
+                                                            .currentTitle
+                                                            .value,
+                                                        artist: PlayerManager
+                                                            .currentArtist
+                                                            .value,
+                                                        isFullSize: true,
+                                                      ),
+                                                    ),
+                                              );
 
                                               if (layoutMode == "Neo-Retro") {
                                                 artwork = VinylSpinner(
                                                   isPlaying: playing,
                                                   child: ClipOval(
-                                                    child: artwork,
-                                                  ),
-                                                );
-                                              } else if (layoutMode ==
-                                                  "Consola Oscura") {
-                                                artwork = Container(
-                                                  decoration: BoxDecoration(
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: Colors.black
-                                                            .withOpacity(0.5),
-                                                        blurRadius: 40,
-                                                        offset: const Offset(
-                                                          0,
-                                                          20,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  child: ClipRRect(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
                                                     child: artwork,
                                                   ),
                                                 );
@@ -428,37 +403,14 @@ class FullPlayerModal extends StatelessWidget {
                                                     child: artwork,
                                                   ),
                                                 );
-                                              } else if (layoutMode ==
-                                                  "Cyberpunk Neón") {
-                                                artwork = Container(
-                                                  decoration: BoxDecoration(
-                                                    border: Border.all(
-                                                      color: safeThemeColor,
-                                                      width: 3,
-                                                    ),
-                                                    boxShadow: playing
-                                                        ? [
-                                                            BoxShadow(
-                                                              color: safeThemeColor
-                                                                  .withOpacity(
-                                                                    0.6,
-                                                                  ),
-                                                              blurRadius: 30,
-                                                              spreadRadius: 5,
-                                                            ),
-                                                          ]
-                                                        : [],
-                                                  ),
-                                                  child: artwork,
-                                                );
                                               } else {
                                                 artwork = Container(
                                                   decoration: BoxDecoration(
                                                     boxShadow: [
                                                       BoxShadow(
                                                         color: Colors.black
-                                                            .withOpacity(0.3),
-                                                        blurRadius: 30,
+                                                            .withOpacity(0.35),
+                                                        blurRadius: 35,
                                                         offset: const Offset(
                                                           0,
                                                           15,
@@ -476,13 +428,6 @@ class FullPlayerModal extends StatelessWidget {
                                                 );
                                               }
 
-                                              double paddingArt =
-                                                  (layoutMode ==
-                                                          "Consola Oscura" ||
-                                                      layoutMode ==
-                                                          "Cyberpunk Neón")
-                                                  ? 45
-                                                  : 35;
                                               return AnimatedScale(
                                                 scale: playing ? 1.0 : 0.90,
                                                 duration: const Duration(
@@ -493,9 +438,8 @@ class FullPlayerModal extends StatelessWidget {
                                                   tag: 'cover_active',
                                                   child: Padding(
                                                     padding:
-                                                        EdgeInsets.symmetric(
-                                                          horizontal:
-                                                              paddingArt,
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 35,
                                                         ),
                                                     child: artwork,
                                                   ),
@@ -506,7 +450,8 @@ class FullPlayerModal extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                    // 🎛️ CONTROLES BOTTOM
+
+                                    // 🎛️ CONTROLES BOTTOM DE CRISTAL ADAPTATIVOS
                                     Padding(
                                       padding: const EdgeInsets.fromLTRB(
                                         30,
@@ -527,6 +472,20 @@ class FullPlayerModal extends StatelessWidget {
                                                   AudioEngineType.radio;
                                               bool isLofi = _lofiArtists
                                                   .contains(artist);
+
+                                              // Colores finales respetando el contraste dinámico de la portada
+                                              final Color activeTextColor =
+                                                  layoutMode ==
+                                                      "Cristal Inmersivo"
+                                                  ? contrastIconColor
+                                                  : textColor;
+                                              final Color activeSubtitleColor =
+                                                  layoutMode ==
+                                                      "Cristal Inmersivo"
+                                                  ? (isLightColor
+                                                        ? Colors.black54
+                                                        : Colors.white70)
+                                                  : dynSecondaryText;
 
                                               return Column(
                                                 mainAxisSize: MainAxisSize.min,
@@ -563,7 +522,7 @@ class FullPlayerModal extends StatelessWidget {
                                                                       FontWeight
                                                                           .w900,
                                                                   color:
-                                                                      textColor,
+                                                                      activeTextColor,
                                                                   letterSpacing:
                                                                       -0.5,
                                                                 ),
@@ -578,7 +537,7 @@ class FullPlayerModal extends StatelessWidget {
                                                               style: TextStyle(
                                                                 fontSize: 18,
                                                                 color:
-                                                                    secondaryTextColor,
+                                                                    activeSubtitleColor,
                                                                 fontWeight:
                                                                     FontWeight
                                                                         .w600,
@@ -589,7 +548,6 @@ class FullPlayerModal extends StatelessWidget {
                                                       ),
                                                       const SizedBox(width: 15),
 
-                                                      // ✨ BOTÓN DE FAVORITOS (CORAZÓN)
                                                       ValueListenableBuilder<
                                                         String
                                                       >(
@@ -643,7 +601,7 @@ class FullPlayerModal extends StatelessWidget {
                                                                     color: isFav
                                                                         ? Colors
                                                                               .redAccent
-                                                                        : textColor,
+                                                                        : activeTextColor,
                                                                     size: 32,
                                                                   ),
                                                                 ),
@@ -660,92 +618,41 @@ class FullPlayerModal extends StatelessWidget {
                                                                 .enableHaptics
                                                                 .value)
                                                               HapticFeedback.lightImpact();
-                                                            // Aquí va la lógica de letras si la tienes
+                                                            showModalBottomSheet(
+                                                              context: context,
+                                                              isScrollControlled:
+                                                                  true,
+                                                              backgroundColor:
+                                                                  Colors
+                                                                      .transparent,
+                                                              builder: (context) =>
+                                                                  LyricsProView(
+                                                                    lyrics:
+                                                                        "[00:00.00] Modo Letras activado...\n[00:05.00] (La API de descargas se conectará pronto)",
+                                                                    songName: PlayerManager
+                                                                        .currentTitle
+                                                                        .value,
+                                                                  ),
+                                                            );
                                                           },
                                                           child: Container(
                                                             padding:
                                                                 const EdgeInsets.all(
                                                                   12,
                                                                 ),
-                                                            decoration: BoxDecoration(
-                                                              color: textColor
-                                                                  .withOpacity(
-                                                                    0.08,
-                                                                  ),
-                                                              shape: BoxShape
-                                                                  .circle,
-                                                            ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                                  color:
+                                                                      glassBtnColor,
+                                                                  shape: BoxShape
+                                                                      .circle,
+                                                                ),
                                                             child: Icon(
                                                               Icons
                                                                   .lyrics_rounded,
-                                                              color: textColor,
+                                                              color:
+                                                                  activeTextColor,
                                                               size: 24,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      // ✨ BOTÓN DE CASSETTE (SOLO APARECE EN LA RADIO)
-                                                      if (isRadio)
-                                                        ValueListenableBuilder<
-                                                          bool
-                                                        >(
-                                                          valueListenable:
-                                                              PlayerManager
-                                                                  .isRecording,
-                                                          builder: (context, recording, _) => AnimatedPress(
-                                                            onTap: () {
-                                                              if (recording) {
-                                                                PlayerManager.stopRecording(
-                                                                  context,
-                                                                );
-                                                              } else {
-                                                                PlayerManager.startRecording();
-                                                              }
-                                                            },
-                                                            child: AnimatedContainer(
-                                                              duration:
-                                                                  const Duration(
-                                                                    milliseconds:
-                                                                        300,
-                                                                  ),
-                                                              padding:
-                                                                  const EdgeInsets.all(
-                                                                    12,
-                                                                  ),
-                                                              decoration: BoxDecoration(
-                                                                // Si está grabando, parpadea en rojo oscuro. Si no, gris discreto.
-                                                                color: recording
-                                                                    ? Colors.red
-                                                                          .withOpacity(
-                                                                            0.3,
-                                                                          )
-                                                                    : textColor
-                                                                          .withOpacity(
-                                                                            0.08,
-                                                                          ),
-                                                                shape: BoxShape
-                                                                    .circle,
-                                                                border:
-                                                                    recording
-                                                                    ? Border.all(
-                                                                        color: Colors
-                                                                            .redAccent,
-                                                                        width:
-                                                                            2,
-                                                                      )
-                                                                    : null,
-                                                              ),
-                                                              child: Icon(
-                                                                recording
-                                                                    ? Icons
-                                                                          .stop_circle_rounded
-                                                                    : Icons
-                                                                          .fiber_manual_record_rounded,
-                                                                color: recording
-                                                                    ? Colors
-                                                                          .redAccent
-                                                                    : textColor,
-                                                                size: 24,
-                                                              ),
                                                             ),
                                                           ),
                                                         ),
@@ -782,16 +689,15 @@ class FullPlayerModal extends StatelessWidget {
                                                               ),
                                                           decoration:
                                                               BoxDecoration(
-                                                                color: textColor
-                                                                    .withOpacity(
-                                                                      0.08,
-                                                                    ),
+                                                                color:
+                                                                    glassBtnColor,
                                                                 shape: BoxShape
                                                                     .circle,
                                                               ),
                                                           child: Icon(
                                                             Icons.tune_rounded,
-                                                            color: textColor,
+                                                            color:
+                                                                activeTextColor,
                                                             size: 24,
                                                           ),
                                                         ),
@@ -812,52 +718,31 @@ class FullPlayerModal extends StatelessWidget {
                                                             PlayerManager
                                                                 .duration
                                                                 .value;
-                                                        final progress =
-                                                            dur.inMilliseconds >
-                                                                0
-                                                            ? (pos.inMilliseconds /
-                                                                      dur.inMilliseconds)
-                                                                  .clamp(
-                                                                    0.0,
-                                                                    1.0,
-                                                                  )
-                                                            : 0.0;
                                                         return Column(
                                                           children: [
                                                             SliderTheme(
                                                               data: SliderTheme.of(context).copyWith(
-                                                                trackHeight:
-                                                                    (layoutMode ==
-                                                                            "Neo-Retro" ||
-                                                                        layoutMode ==
-                                                                            "Cyberpunk Neón")
-                                                                    ? 6
-                                                                    : 4,
+                                                                trackHeight: 4,
                                                                 thumbShape:
-                                                                    layoutMode ==
-                                                                        "Cyberpunk Neón"
-                                                                    ? const RoundSliderThumbShape(
-                                                                        enabledThumbRadius:
-                                                                            0,
-                                                                      )
-                                                                    : const RoundSliderThumbShape(
-                                                                        enabledThumbRadius:
-                                                                            6,
-                                                                      ),
+                                                                    const RoundSliderThumbShape(
+                                                                      enabledThumbRadius:
+                                                                          6,
+                                                                    ),
                                                                 overlayShape:
                                                                     SliderComponentShape
                                                                         .noOverlay,
                                                                 activeTrackColor:
-                                                                    (layoutMode ==
-                                                                            "Consola Oscura" ||
-                                                                        layoutMode ==
-                                                                            "Cyberpunk Neón")
+                                                                    layoutMode ==
+                                                                        "Cristal Inmersivo"
                                                                     ? safeThemeColor
-                                                                    : textColor,
+                                                                    : (layoutMode ==
+                                                                              "Minimalista Zen"
+                                                                          ? textColor
+                                                                          : safeThemeColor),
                                                                 inactiveTrackColor:
-                                                                    textColor
+                                                                    activeTextColor
                                                                         .withOpacity(
-                                                                          0.2,
+                                                                          0.15,
                                                                         ),
                                                               ),
                                                               child: Slider(
@@ -876,13 +761,33 @@ class FullPlayerModal extends StatelessWidget {
                                                                     ? dur.inSeconds
                                                                           .toDouble()
                                                                     : 1,
+                                                                onChangeStart: (_) =>
+                                                                    PlayerManager
+                                                                            .isUserDraggingSlider =
+                                                                        true,
                                                                 onChanged: (v) =>
-                                                                    PlayerManager.seek(
-                                                                      Duration(
-                                                                        seconds:
-                                                                            v.toInt(),
-                                                                      ),
+                                                                    PlayerManager
+                                                                        .position
+                                                                        .value = Duration(
+                                                                      seconds: v
+                                                                          .toInt(),
                                                                     ),
+                                                                onChangeEnd: (v) {
+                                                                  PlayerManager.seek(
+                                                                    Duration(
+                                                                      seconds: v
+                                                                          .toInt(),
+                                                                    ),
+                                                                  );
+                                                                  Future.delayed(
+                                                                    const Duration(
+                                                                      milliseconds:
+                                                                          200,
+                                                                    ),
+                                                                    () => PlayerManager.isUserDraggingSlider =
+                                                                        false,
+                                                                  );
+                                                                },
                                                               ),
                                                             ),
                                                             const SizedBox(
@@ -897,7 +802,7 @@ class FullPlayerModal extends StatelessWidget {
                                                                   "${pos.inMinutes}:${(pos.inSeconds % 60).toString().padLeft(2, '0')}",
                                                                   style: TextStyle(
                                                                     color:
-                                                                        secondaryTextColor,
+                                                                        activeSubtitleColor,
                                                                     fontSize:
                                                                         13,
                                                                     fontWeight:
@@ -909,7 +814,7 @@ class FullPlayerModal extends StatelessWidget {
                                                                   "${dur.inMinutes}:${(dur.inSeconds % 60).toString().padLeft(2, '0')}",
                                                                   style: TextStyle(
                                                                     color:
-                                                                        secondaryTextColor,
+                                                                        activeSubtitleColor,
                                                                     fontSize:
                                                                         13,
                                                                     fontWeight:
@@ -955,7 +860,7 @@ class FullPlayerModal extends StatelessWidget {
                                                                   .shuffle_rounded,
                                                               color: shuffle
                                                                   ? safeThemeColor
-                                                                  : secondaryTextColor,
+                                                                  : activeSubtitleColor,
                                                               size: 28,
                                                             ),
                                                           ),
@@ -977,7 +882,8 @@ class FullPlayerModal extends StatelessWidget {
                                                           child: Icon(
                                                             Icons
                                                                 .skip_previous_rounded,
-                                                            color: textColor,
+                                                            color:
+                                                                activeTextColor,
                                                             size: 50,
                                                           ),
                                                         ),
@@ -1010,34 +916,29 @@ class FullPlayerModal extends StatelessWidget {
                                                                 : 80,
                                                             decoration: BoxDecoration(
                                                               color:
-                                                                  (layoutMode ==
-                                                                      "Minimalista Zen")
+                                                                  layoutMode ==
+                                                                      "Minimalista Zen"
                                                                   ? textColor
                                                                   : safeThemeColor,
-                                                              borderRadius: BorderRadius.circular(
-                                                                layoutMode ==
-                                                                        "Cyberpunk Neón"
-                                                                    ? 10
-                                                                    : (isRadio
-                                                                          ? 35
-                                                                          : (layoutMode ==
-                                                                                    "Neo-Retro"
-                                                                                ? 20
-                                                                                : 28)),
-                                                              ),
-                                                              boxShadow:
-                                                                  isRadio &&
-                                                                      playing
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    isRadio
+                                                                        ? 35
+                                                                        : 28,
+                                                                  ),
+                                                              boxShadow: playing
                                                                   ? [
                                                                       BoxShadow(
-                                                                        color: safeThemeColor
-                                                                            .withOpacity(
-                                                                              0.5,
-                                                                            ),
+                                                                        color:
+                                                                            (layoutMode ==
+                                                                                        "Minimalista Zen"
+                                                                                    ? textColor
+                                                                                    : safeThemeColor)
+                                                                                .withOpacity(0.4),
                                                                         blurRadius:
-                                                                            30,
+                                                                            25,
                                                                         spreadRadius:
-                                                                            10,
+                                                                            4,
                                                                       ),
                                                                     ]
                                                                   : [],
@@ -1077,7 +978,8 @@ class FullPlayerModal extends StatelessWidget {
                                                           child: Icon(
                                                             Icons
                                                                 .skip_next_rounded,
-                                                            color: textColor,
+                                                            color:
+                                                                activeTextColor,
                                                             size: 50,
                                                           ),
                                                         ),
@@ -1112,7 +1014,7 @@ class FullPlayerModal extends StatelessWidget {
                                                                               .repeat_one_on_rounded),
                                                               color: repeat > 0
                                                                   ? safeThemeColor
-                                                                  : secondaryTextColor,
+                                                                  : activeSubtitleColor,
                                                               size: 28,
                                                             ),
                                                           ),
@@ -1124,26 +1026,27 @@ class FullPlayerModal extends StatelessWidget {
                                                     ],
                                                   ),
 
-                                                  const SizedBox(
-                                                    height: 25,
-                                                  ), // Espaciador antes del volumen
-                                                  // ✨ LLAMADA AL COMPONENTE DE VOLUMEN SINCRONIZADO
+                                                  const SizedBox(height: 25),
                                                   SystemVolumeSlider(
-                                                    activeColor: safeThemeColor
-                                                        .withOpacity(0.8),
-                                                    textColor: textColor,
+                                                    activeColor:
+                                                        layoutMode ==
+                                                            "Minimalista Zen"
+                                                        ? textColor
+                                                        : safeThemeColor
+                                                              .withOpacity(0.8),
+                                                    textColor: activeTextColor,
                                                   ),
-                                                ], // Cierre de la Column de controles
+                                                ],
                                               );
                                             },
                                           );
                                         },
                                       ),
                                     ),
-                                  ], // Cierre de los children de la Column principal
+                                  ],
                                 ),
                               ),
-                            ], // Cierre del Stack principal
+                            ],
                           );
                         },
                       );
@@ -1157,9 +1060,9 @@ class FullPlayerModal extends StatelessWidget {
       },
     );
   }
-} // <--- ESTA ES LA LLAVE FINAL DE LA CLASE FullPlayerModal
+}
 
-// 🖌️ HERRAMIENTA EXTRA PARA EL MODO CYBERPUNK (Pegar hasta el final del archivo)
+// 🖌️ HERRAMIENTA EXTRA PARA EL MODO CYBERPUNK
 class GridPainter extends CustomPainter {
   final Color color;
   GridPainter({required this.color});
@@ -1168,12 +1071,10 @@ class GridPainter extends CustomPainter {
     var paint = Paint()
       ..color = color
       ..strokeWidth = 1;
-    for (double i = 0; i < size.width; i += 30) {
+    for (double i = 0; i < size.width; i += 30)
       canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
-    }
-    for (double i = 0; i < size.height; i += 30) {
+    for (double i = 0; i < size.height; i += 30)
       canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
-    }
   }
 
   @override
@@ -1196,7 +1097,6 @@ class FloatingMiniPlayer extends StatelessWidget {
         return ValueListenableBuilder<Color>(
           valueListenable: PlayerManager.currentThemeColor,
           builder: (context, themeColor, _) {
-            // Adaptación de cristal según el tema claro u oscuro
             final isLightMode =
                 Theme.of(context).brightness == Brightness.light;
             final glassColor = isLightMode
@@ -1210,14 +1110,12 @@ class FloatingMiniPlayer extends StatelessWidget {
                 backgroundColor: Colors.transparent,
                 builder: (c) => const FullPlayerModal(),
               ),
-              // ✨ LA MAGIA DE LOS SWIPES: Cambiar canción deslizando
               onHorizontalDragEnd: (details) {
                 if (PlayerManager.activeEngine.value != AudioEngineType.radio) {
-                  if (details.primaryVelocity! < 0) {
+                  if (details.primaryVelocity! < 0)
                     PlayerManager.playNext();
-                  } else if (details.primaryVelocity! > 0) {
+                  else if (details.primaryVelocity! > 0)
                     PlayerManager.playPrevious();
-                  }
                 }
               },
               child: Container(
@@ -1225,13 +1123,11 @@ class FloatingMiniPlayer extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(22),
                   boxShadow: [
-                    // Sombra base suave
                     BoxShadow(
                       color: Colors.black.withOpacity(0.15),
                       blurRadius: 15,
                       offset: const Offset(0, 8),
                     ),
-                    // Sombra dinámica con el color de la portada
                     BoxShadow(
                       color: themeColor.withOpacity(0.15),
                       blurRadius: 20,
@@ -1243,10 +1139,7 @@ class FloatingMiniPlayer extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(22),
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(
-                      sigmaX: 15,
-                      sigmaY: 15,
-                    ), // Efecto Cristal Esmerilado
+                    filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                     child: Container(
                       color: glassColor,
                       child: Column(
@@ -1259,7 +1152,6 @@ class FloatingMiniPlayer extends StatelessWidget {
                             ),
                             child: Row(
                               children: [
-                                // Portada más cuadrada y moderna
                                 Hero(
                                   tag: 'cover_active',
                                   child: ClipRRect(
@@ -1270,11 +1162,20 @@ class FloatingMiniPlayer extends StatelessWidget {
                                       builder: (c, art, _) => SizedBox(
                                         width: 46,
                                         height: 46,
-                                        child: HybridArtworkWidget(
-                                          artworkData: art,
-                                          title: title,
-                                          artist:
-                                              PlayerManager.currentArtist.value,
+                                        child: AnimatedSwitcher(
+                                          duration: const Duration(
+                                            milliseconds: 500,
+                                          ),
+                                          child: HybridArtworkWidget(
+                                            key: ValueKey(
+                                              art?.toString() ?? 'empty',
+                                            ),
+                                            artworkData: art,
+                                            title: title,
+                                            artist: PlayerManager
+                                                .currentArtist
+                                                .value,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1347,9 +1248,7 @@ class FloatingMiniPlayer extends StatelessWidget {
                                     child: Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: themeColor.withOpacity(
-                                          0.15,
-                                        ), // Círculo de color dinámico
+                                        color: themeColor.withOpacity(0.15),
                                         shape: BoxShape.circle,
                                       ),
                                       child: Icon(
@@ -1371,7 +1270,6 @@ class FloatingMiniPlayer extends StatelessWidget {
                               ],
                             ),
                           ),
-                          // Barra de progreso con Glow
                           ValueListenableBuilder<Duration>(
                             valueListenable: PlayerManager.position,
                             builder: (c, pos, _) {
@@ -1481,14 +1379,13 @@ class _LyricsProViewState extends State<LyricsProView> {
         final sec = int.parse(match.group(2)!);
         final ms = int.parse(match.group(3)!.padRight(3, '0'));
         final texto = match.group(4)!.trim();
-        if (texto.isNotEmpty) {
+        if (texto.isNotEmpty)
           _lineasSincronizadas.add(
             LrcLine(
               time: Duration(minutes: min, seconds: sec, milliseconds: ms),
               text: texto,
             ),
           );
-        }
       }
     }
     if (_lineasSincronizadas.isNotEmpty) {
@@ -1733,12 +1630,19 @@ class _AudioRouteSheetState extends State<AudioRouteSheet> {
                     children: _dispositivos.isEmpty
                         ? [
                             ListTile(
-                              leading: Icon(
-                                Icons.smartphone_rounded,
-                                color: themeColor,
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: themeColor.withOpacity(0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.smartphone_rounded,
+                                  color: themeColor,
+                                ),
                               ),
                               title: Text(
-                                "Altavoz del Teléfono",
+                                "Moto G41 (Altavoz Interno)",
                                 style: TextStyle(
                                   color: theme.textTheme.bodyLarge?.color,
                                   fontWeight: FontWeight.bold,
@@ -1758,22 +1662,27 @@ class _AudioRouteSheetState extends State<AudioRouteSheet> {
                                 d.type == AudioDeviceType.wiredHeadset;
                             bool isSpeaker =
                                 d.type == AudioDeviceType.builtInSpeaker;
+
                             IconData icon = Icons.speaker_rounded;
                             if (isBluetooth)
                               icon = Icons.bluetooth_audio_rounded;
                             if (isWired) icon = Icons.headphones_rounded;
                             if (isSpeaker) icon = Icons.smartphone_rounded;
+
                             String nombre = d.name;
                             if (isSpeaker &&
                                 (nombre.isEmpty ||
-                                    nombre.toLowerCase().contains("speaker")))
-                              nombre = "Altavoz del Teléfono";
-                            else if (nombre.isEmpty)
+                                    nombre.toLowerCase().contains("speaker"))) {
+                              nombre = "Moto G41 (Altavoz Interno)";
+                            } else if (nombre.isEmpty) {
                               nombre = "Dispositivo de Audio";
+                            }
+
                             String subtitulo = "Conexión interna";
                             if (isBluetooth)
                               subtitulo = "Conectado vía Bluetooth";
                             if (isWired) subtitulo = "Conectado por cable";
+
                             return ListTile(
                               leading: Container(
                                 padding: const EdgeInsets.all(8),
@@ -1844,7 +1753,6 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeColor = PlayerManager.currentThemeColor.value;
-
     return Container(
       height: MediaQuery.of(context).size.height * 0.75,
       decoration: BoxDecoration(
@@ -1875,11 +1783,10 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
                   ),
                 ),
                 const Spacer(),
-                // ✨ Solo mostramos el número de pistas si estamos en modo Local
                 ValueListenableBuilder<AudioEngineType>(
                   valueListenable: PlayerManager.activeEngine,
                   builder: (context, engine, _) {
-                    if (engine == AudioEngineType.local) {
+                    if (engine == AudioEngineType.local)
                       return Text(
                         "${PlayerManager.playbackQueue.length} pistas",
                         style: const TextStyle(
@@ -1887,20 +1794,16 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
                           fontWeight: FontWeight.bold,
                         ),
                       );
-                    }
                     return const SizedBox.shrink();
                   },
                 ),
               ],
             ),
           ),
-
-          // ✨ EL CEREBRO DE LA COLA (EL IF QUE PEDISTE)
           Expanded(
             child: ValueListenableBuilder<AudioEngineType>(
               valueListenable: PlayerManager.activeEngine,
               builder: (context, engine, _) {
-                // 🟢 1. SI ESTÁ SONANDO SPOTIFY
                 if (engine == AudioEngineType.spotify) {
                   return Center(
                     child: Column(
@@ -1930,8 +1833,6 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
                     ),
                   );
                 }
-
-                // 🔴 2. SI ESTÁ SONANDO LA RADIO
                 if (engine == AudioEngineType.radio) {
                   return Center(
                     child: Column(
@@ -1961,17 +1862,13 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
                     ),
                   );
                 }
-
-                // 🎵 3. SI ESTÁ SONANDO EL MP3 LOCAL (Tu código original)
-                if (PlayerManager.playbackQueue.isEmpty) {
+                if (PlayerManager.playbackQueue.isEmpty)
                   return const Center(
                     child: Text(
                       "La cola está vacía",
                       style: TextStyle(color: Colors.grey),
                     ),
                   );
-                }
-
                 return ReorderableListView.builder(
                   physics: const BouncingScrollPhysics(),
                   padding: const EdgeInsets.only(bottom: 100),
@@ -2032,7 +1929,7 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
   }
 }
 
-// --- 13. CONSOLA DE ECUALIZACIÓN PRO (Verdugo de VLC) ---
+// --- 13. CONSOLA DE ECUALIZACIÓN PRO ---
 class EqualizerProView extends StatefulWidget {
   const EqualizerProView({super.key});
   @override
@@ -2052,11 +1949,7 @@ class _EqualizerProViewState extends State<EqualizerProView> {
     if (!Platform.isAndroid) return;
     try {
       final enabled = await PlayerManager.equalizer.enabled;
-      if (mounted) {
-        setState(() {
-          _eqEnabled = enabled;
-        });
-      }
+      if (mounted) setState(() => _eqEnabled = enabled);
     } catch (e) {
       debugPrint("Hardware no soportado.");
     }
@@ -2201,14 +2094,16 @@ class _EqualizerProViewState extends State<EqualizerProView> {
                     ignoring: !_eqEnabled,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: params.bands.map((band) {
-                        return _buildVerticalFader(
-                          band,
-                          params,
-                          themeColor,
-                          theme,
-                        );
-                      }).toList(),
+                      children: params.bands
+                          .map(
+                            (band) => _buildVerticalFader(
+                              band,
+                              params,
+                              themeColor,
+                              theme,
+                            ),
+                          )
+                          .toList(),
                     ),
                   ),
                 );
@@ -2274,7 +2169,6 @@ class _EqualizerProViewState extends State<EqualizerProView> {
   }
 }
 
-// ==========================================
 // --- 14. LA BÓVEDA DE LETRAS OFFLINE (.lrc) ---
 class LyricsVault {
   static String _sanitizeFilename(String name) {
@@ -2283,18 +2177,15 @@ class LyricsVault {
 
   static Future<File> _getFileRef(String title, String artist) async {
     final directory = await getApplicationDocumentsDirectory();
-    final safeTitle = _sanitizeFilename(title);
-    final safeArtist = _sanitizeFilename(artist);
-    return File('${directory.path}/${safeTitle}_$safeArtist.lrc');
+    return File(
+      '${directory.path}/${_sanitizeFilename(title)}_${_sanitizeFilename(artist)}.lrc',
+    );
   }
 
   static Future<String?> readLyrics(String title, String artist) async {
     try {
       final file = await _getFileRef(title, artist);
-      if (await file.exists()) {
-        debugPrint("🗄️ BÓVEDA: Letra cargada.");
-        return await file.readAsString();
-      }
+      if (await file.exists()) return await file.readAsString();
     } catch (e) {
       debugPrint("ERROR BÓVEDA.");
     }
@@ -2312,7 +2203,6 @@ class LyricsVault {
         return;
       final file = await _getFileRef(title, artist);
       await file.writeAsString(lyricsData);
-      debugPrint("🗄️ BÓVEDA: Letra guardada.");
     } catch (e) {
       debugPrint("ERROR BÓVEDA.");
     }
@@ -2366,7 +2256,7 @@ class LyricsEngine {
   }
 }
 
-// ✨ COMPONENTE DE VOLUMEN SINCRONIZADO (Fábrica independiente)
+// ✨ COMPONENTE DE VOLUMEN SINCRONIZADO BLINDADO
 class SystemVolumeSlider extends StatefulWidget {
   final Color activeColor;
   final Color textColor;
@@ -2375,24 +2265,21 @@ class SystemVolumeSlider extends StatefulWidget {
     required this.activeColor,
     required this.textColor,
   });
-
   @override
   State<SystemVolumeSlider> createState() => _SystemVolumeSliderState();
 }
 
 class _SystemVolumeSliderState extends State<SystemVolumeSlider> {
   double _currentVolume = 0.5;
-
+  bool _isDragging = false;
   @override
   void initState() {
     super.initState();
-    // 1. Leer volumen inicial
     FlutterVolumeController.getVolume().then(
       (v) => setState(() => _currentVolume = v ?? 0.5),
     );
-    // 2. Escuchar cambios de los botones físicos
     FlutterVolumeController.addListener((v) {
-      if (mounted) setState(() => _currentVolume = v);
+      if (mounted && !_isDragging) setState(() => _currentVolume = v);
     });
   }
 
@@ -2404,103 +2291,48 @@ class _SystemVolumeSliderState extends State<SystemVolumeSlider> {
 
   @override
   Widget build(BuildContext context) {
-    return InteractiveSlider(
-      min: 0.0,
-      max: 1.0,
-      initialProgress: _currentVolume,
-      startIcon: Icon(
-        Icons.volume_mute_rounded,
-        color: widget.textColor.withOpacity(0.5),
-        size: 20,
-      ),
-      endIcon: Icon(
-        Icons.volume_up_rounded,
-        color: widget.textColor.withOpacity(0.5),
-        size: 20,
-      ),
-      foregroundColor: widget.activeColor,
-      onChanged: (v) {
-        FlutterVolumeController.setVolume(v); // Cambia el volumen del sistema
-      },
-    );
-  }
-}
-// ✨ EL REPRODUCTOR DE VIDEO VISUAL (VLC STYLE)
-class YouTubeVideoModal extends StatefulWidget {
-  final String videoId;
-  const YouTubeVideoModal({super.key, required this.videoId});
-
-  @override
-  State<YouTubeVideoModal> createState() => _YouTubeVideoModalState();
-}
-
-class _YouTubeVideoModalState extends State<YouTubeVideoModal> {
-  late YoutubePlayerController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    // Extraemos el ID del video si pusiste el link completo, o usamos el ID directo
-    final vId = YoutubePlayer.convertUrlToId(widget.videoId) ?? widget.videoId;
-    
-    _controller = YoutubePlayerController(
-      initialVideoId: vId,
-      flags: const YoutubePlayerFlags(
-        autoPlay: true,
-        mute: false,
-        loop: true, // Ideal para videos de Lofi o Study with me
-        hideControls: false,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(15),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(25),
-        child: Container(
-          color: Colors.black,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Barra superior para cerrar
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                color: Colors.black87,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text("Estudia Conmigo", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-              // El Reproductor de Video
-              YoutubePlayer(
-                controller: _controller,
-                showVideoProgressIndicator: true,
-                progressIndicatorColor: Colors.redAccent,
-                progressColors: const ProgressBarColors(
-                  playedColor: Colors.redAccent,
-                  handleColor: Colors.redAccent,
-                ),
-              ),
-            ],
+    return Row(
+      children: [
+        Icon(
+          Icons.volume_mute_rounded,
+          color: widget.textColor.withOpacity(0.5),
+          size: 20,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 4,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: SliderComponentShape.noOverlay,
+              activeTrackColor: widget.activeColor,
+              inactiveTrackColor: widget.textColor.withOpacity(0.15),
+              thumbColor: widget.activeColor,
+            ),
+            child: Slider(
+              value: _currentVolume.clamp(0.0, 1.0),
+              min: 0.0,
+              max: 1.0,
+              onChangeStart: (_) => _isDragging = true,
+              onChanged: (v) {
+                setState(() => _currentVolume = v);
+                FlutterVolumeController.setVolume(v);
+              },
+              onChangeEnd: (_) {
+                Future.delayed(const Duration(milliseconds: 100), () {
+                  if (mounted) setState(() => _isDragging = false);
+                });
+              },
+            ),
           ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Icon(
+          Icons.volume_up_rounded,
+          color: widget.textColor.withOpacity(0.5),
+          size: 20,
+        ),
+      ],
     );
   }
 }

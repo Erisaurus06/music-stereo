@@ -30,6 +30,8 @@ class RadioStation {
       country: json['country'] ?? '',
     );
   }
+
+  Object? toJson() {}
 }
 
 // 📡 LA ANTENA RECEPTORA (SE CONECTA A INTERNET)

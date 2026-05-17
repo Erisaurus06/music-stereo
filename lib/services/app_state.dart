@@ -188,6 +188,8 @@ class AppState {
   static final ValueNotifier<bool> enableHaptics = ValueNotifier(true);
   static final ValueNotifier<bool> highFidelityAnimations = ValueNotifier(true);
 
+  static get supabase => null;
+
   // ✨ GUARDADO DE NUEVAS OPCIONES
   static void setPlayerLayout(String layout) {
     playerLayout.value = layout;

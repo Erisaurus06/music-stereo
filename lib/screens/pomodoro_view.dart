@@ -1,11 +1,13 @@
 import 'dart:async';
+import 'dart:convert'; // ✨ Para guardar links como JSON
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart'; // Mantén esto para que funcione StateProvider
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:music_stereo/services/radio_engine.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import 'package:url_launcher/url_launcher.dart'; // Para abrir Spotify
+import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // ✨ El disco duro
 
 import '../services/player_manager.dart';
 import '../services/app_state.dart';
@@ -19,10 +21,10 @@ enum PomodoroState { focus, shortBreak, longBreak, idle }
 final pomodoroPhaseProvider = StateProvider<PomodoroState>(
   (ref) => PomodoroState.idle,
 );
-final pomodoroSecondsProvider = StateProvider<int>((ref) => 1500); // 25 min
+final pomodoroSecondsProvider = StateProvider<int>((ref) => 1500);
 final pomodoroSessionsProvider = StateProvider<int>((ref) => 0);
 
-// ✨ MEMORIA DE PLAYLISTS Y VIDEOS (Inteligente)
+// ✨ MEMORIA DE PLAYLISTS Y VIDEOS
 final customLinksProvider = StateProvider<List<Map<String, String>>>(
   (ref) => [],
 );
@@ -140,11 +142,41 @@ class PomodoroController with WidgetsBindingObserver {
 // ==========================================
 // --- VISTA DE PRODUCTIVIDAD (UI/UX PREMIUM) ---
 // ==========================================
-class PomodoroView extends ConsumerWidget {
+class PomodoroView extends ConsumerStatefulWidget {
   const PomodoroView({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PomodoroView> createState() => _PomodoroViewState();
+}
+
+class _PomodoroViewState extends ConsumerState<PomodoroView> {
+  @override
+  void initState() {
+    super.initState();
+    _cargarLinksGuardados(); // ✨ Leer memoria al iniciar
+  }
+
+  // ✨ FUNCIÓN PARA LEER DEL DISCO DURO
+  Future<void> _cargarLinksGuardados() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? linksJson = prefs.getString('mis_frecuencias_pomodoro');
+    if (linksJson != null) {
+      final List<dynamic> decodificado = jsonDecode(linksJson);
+      final List<Map<String, String>> recuperados = decodificado
+          .map((e) => Map<String, String>.from(e))
+          .toList();
+      ref.read(customLinksProvider.notifier).state = recuperados;
+    }
+  }
+
+  // ✨ FUNCIÓN PARA GUARDAR EN EL DISCO DURO
+  Future<void> _guardarLinksPermanentes(List<Map<String, String>> links) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('mis_frecuencias_pomodoro', jsonEncode(links));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(pomodoroPhaseProvider);
     final sec = ref.watch(pomodoroSecondsProvider);
@@ -526,7 +558,7 @@ class PomodoroView extends ConsumerWidget {
                         ),
                         const SizedBox(height: 30),
 
-                        // ✨ EL ECOSISTEMA MULTIMEDIA (Secciones Separadas)
+                        // ECOSISTEMA MULTIMEDIA
                         _buildMediaEcosystemPanel(
                           theme,
                           themeColor,
@@ -645,21 +677,24 @@ class PomodoroView extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Modo Zen Estricto",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: theme.textTheme.bodyLarge?.color,
+                // ✨ CIRUGÍA: EXPANDED PARA EVITAR OVERFLOW DE 34 PIXELES
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Modo Zen Estricto",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: theme.textTheme.bodyLarge?.color,
+                        ),
                       ),
-                    ),
-                    const Text(
-                      "Si sales de la app, pierdes tu racha.",
-                      style: TextStyle(fontSize: 10, color: Colors.grey),
-                    ),
-                  ],
+                      const Text(
+                        "Si sales de la app, pierdes tu racha.",
+                        style: TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                    ],
+                  ),
                 ),
                 Switch(
                   value: isZenMode,
@@ -677,7 +712,7 @@ class PomodoroView extends ConsumerWidget {
     );
   }
 
-  // ✨ PANEL MULTIMEDIA DIVIDIDO (Listas Independientes)
+  // PANEL MULTIMEDIA DIVIDIDO
   Widget _buildMediaEcosystemPanel(
     ThemeData theme,
     Color themeColor,
@@ -740,21 +775,25 @@ class PomodoroView extends ConsumerWidget {
 
           const SizedBox(height: 30),
 
-          // 🟢 SECCIÓN 2: SPOTIFY (Filtra solo las playlists verdes)
+          // 🟢 SECCIÓN 2: SPOTIFY
           Padding(
             padding: const EdgeInsets.only(left: 30, right: 15, bottom: 15),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  "TUS FRECUENCIAS (SPOTIFY)",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: theme.textTheme.bodySmall?.color,
-                    fontSize: 11,
-                    letterSpacing: 2,
+                // ✨ CIRUGÍA: EXPANDED PARA EVITAR OVERFLOW
+                Expanded(
+                  child: Text(
+                    "TUS FRECUENCIAS (SPOTIFY)",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: theme.textTheme.bodySmall?.color,
+                      fontSize: 11,
+                      letterSpacing: 2,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 10),
                 GestureDetector(
                   onTap: () =>
                       _mostrarDialogoNuevoLink(context, ref, themeColor),
@@ -787,7 +826,6 @@ class PomodoroView extends ConsumerWidget {
             child: Consumer(
               builder: (context, ref, child) {
                 final misLinks = ref.watch(customLinksProvider);
-                // 🧠 Filtramos SOLO los que son de Spotify
                 final spotifyLinks = misLinks
                     .where((l) => l['tipo'] == 'spotify')
                     .toList();
@@ -824,21 +862,25 @@ class PomodoroView extends ConsumerWidget {
 
           const SizedBox(height: 30),
 
-          // 🔴 SECCIÓN 3: VIDEOS (Filtra solo los videos de YouTube)
+          // 🔴 SECCIÓN 3: VIDEOS YOUTUBE
           Padding(
             padding: const EdgeInsets.only(left: 30, right: 15, bottom: 15),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  "ESTUDIA CONMIGO (VISUAL)",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: theme.textTheme.bodySmall?.color,
-                    fontSize: 11,
-                    letterSpacing: 2,
+                // ✨ CIRUGÍA: EXPANDED PARA EVITAR OVERFLOW
+                Expanded(
+                  child: Text(
+                    "ESTUDIA CONMIGO (VISUAL)",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: theme.textTheme.bodySmall?.color,
+                      fontSize: 11,
+                      letterSpacing: 2,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 10),
                 GestureDetector(
                   onTap: () =>
                       _mostrarDialogoNuevoLink(context, ref, themeColor),
@@ -871,7 +913,6 @@ class PomodoroView extends ConsumerWidget {
             child: Consumer(
               builder: (context, ref, child) {
                 final misLinks = ref.watch(customLinksProvider);
-                // 🧠 Filtramos SOLO los que son de YouTube
                 final youtubeLinks = misLinks
                     .where((l) => l['tipo'] == 'youtube_video')
                     .toList();
@@ -910,7 +951,6 @@ class PomodoroView extends ConsumerWidget {
     );
   }
 
-  // ✨ LA TARJETA QUE ABRE SPOTIFY O YOUTUBE
   Widget _focusMediaCard(
     BuildContext context,
     ThemeData theme,
@@ -946,9 +986,8 @@ class PomodoroView extends ConsumerWidget {
             const SnackBar(content: Text("🟢 Abriendo Spotify...")),
           );
           final Uri url = Uri.parse(uri);
-          if (await canLaunchUrl(url)) {
+          if (await canLaunchUrl(url))
             await launchUrl(url, mode: LaunchMode.externalApplication);
-          }
         } else if (tipo == 'youtube_video') {
           showDialog(
             context: context,
@@ -1168,135 +1207,137 @@ class PomodoroView extends ConsumerWidget {
       ),
     );
   }
-}
 
-// ✨ DIÁLOGO INTELIGENTE (Detecta YouTube o Spotify automáticamente)
-void _mostrarDialogoNuevoLink(
-  BuildContext context,
-  WidgetRef ref,
-  Color themeColor,
-) {
-  final theme = Theme.of(context);
-  String nuevoTitulo = "";
-  String nuevoLink = "";
+  // ✨ DIÁLOGO INTELIGENTE Y PERMANENTE
+  void _mostrarDialogoNuevoLink(
+    BuildContext context,
+    WidgetRef ref,
+    Color themeColor,
+  ) {
+    final theme = Theme.of(context);
+    String nuevoTitulo = "";
+    String nuevoLink = "";
 
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        backgroundColor: theme.cardColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-        title: Row(
-          children: [
-            Icon(Icons.add_link_rounded, color: themeColor),
-            const SizedBox(width: 10),
-            Text(
-              "Vincular Frecuencia",
-              style: TextStyle(
-                color: theme.textTheme.bodyLarge?.color,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              decoration: InputDecoration(
-                hintText: "Nombre (ej. Rap para programar)",
-                filled: true,
-                fillColor: Colors.black.withOpacity(0.1),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onChanged: (val) => nuevoTitulo = val,
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              decoration: InputDecoration(
-                hintText: "Pega enlace de Spotify o YouTube...",
-                filled: true,
-                fillColor: Colors.black.withOpacity(0.1),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onChanged: (val) => nuevoLink = val,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar", style: TextStyle(color: Colors.grey)),
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: theme.cardColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(25),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: themeColor,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          title: Row(
+            children: [
+              Icon(Icons.add_link_rounded, color: themeColor),
+              const SizedBox(width: 10),
+              Text(
+                "Vincular Frecuencia",
+                style: TextStyle(
+                  color: theme.textTheme.bodyLarge?.color,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: InputDecoration(
+                  hintText: "Nombre (ej. Rap para programar)",
+                  filled: true,
+                  fillColor: Colors.black.withOpacity(0.1),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (val) => nuevoTitulo = val,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                decoration: InputDecoration(
+                  hintText: "Pega enlace de Spotify o YouTube...",
+                  filled: true,
+                  fillColor: Colors.black.withOpacity(0.1),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+                onChanged: (val) => nuevoLink = val,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "Cancelar",
+                style: TextStyle(color: Colors.grey),
               ),
             ),
-            onPressed: () {
-              if (nuevoTitulo.isNotEmpty && nuevoLink.isNotEmpty) {
-                String tipoDetectado = 'spotify';
-                String uriFinal = nuevoLink;
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: themeColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () {
+                if (nuevoTitulo.isNotEmpty && nuevoLink.isNotEmpty) {
+                  String tipoDetectado = 'spotify';
+                  String uriFinal = nuevoLink;
 
-                // 🧠 CEREBRO: Detectar si es video de YouTube
-                if (nuevoLink.contains("youtube.com") ||
-                    nuevoLink.contains("youtu.be")) {
-                  tipoDetectado = 'youtube_video';
-                }
-                // 🧠 CEREBRO: Limpiar el link si es Spotify
-                else if (nuevoLink.contains("spotify.com")) {
-                  try {
-                    final partes = nuevoLink
-                        .split("spotify.com/")[1]
-                        .split("?")[0]
-                        .split("/");
-                    final tipo = partes[0];
-                    final id = partes[1];
-                    uriFinal = "spotify:$tipo:$id";
-                  } catch (e) {
-                    uriFinal = nuevoLink;
+                  if (nuevoLink.contains("youtube.com") ||
+                      nuevoLink.contains("youtu.be")) {
+                    tipoDetectado = 'youtube_video';
+                  } else if (nuevoLink.contains("spotify.com")) {
+                    try {
+                      final partes = nuevoLink
+                          .split("spotify.com/")[1]
+                          .split("?")[0]
+                          .split("/");
+                      uriFinal = "spotify:${partes[0]}:${partes[1]}";
+                    } catch (e) {
+                      uriFinal = nuevoLink;
+                    }
                   }
+
+                  // 🧠 CEREBRO: Actualiza y Guarda en Disco Duro
+                  ref.read(customLinksProvider.notifier).update((state) {
+                    final newState = [
+                      ...state,
+                      {
+                        'titulo': nuevoTitulo,
+                        'uri': uriFinal,
+                        'tipo': tipoDetectado,
+                      },
+                    ];
+                    _guardarLinksPermanentes(
+                      newState,
+                    ); // 💾 Se sella en la memoria
+                    return newState;
+                  });
+
+                  HapticFeedback.heavyImpact();
+                  Navigator.pop(context);
                 }
-
-                // Guardar con el TIPO correcto para que vaya a su sección
-                ref
-                    .read(customLinksProvider.notifier)
-                    .update(
-                      (state) => [
-                        ...state,
-                        {
-                          'titulo': nuevoTitulo,
-                          'uri': uriFinal,
-                          'tipo': tipoDetectado,
-                        },
-                      ],
-                    );
-
-                HapticFeedback.heavyImpact();
-                Navigator.pop(context);
-              }
-            },
-            child: const Text(
-              "Fijar",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+              },
+              child: const Text(
+                "Fijar",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-          ),
-        ],
-      );
-    },
-  );
+          ],
+        );
+      },
+    );
+  }
 }
 
 // ==========================================
@@ -1305,19 +1346,16 @@ void _mostrarDialogoNuevoLink(
 class YouTubeVideoModal extends StatefulWidget {
   final String videoId;
   const YouTubeVideoModal({super.key, required this.videoId});
-
   @override
   State<YouTubeVideoModal> createState() => _YouTubeVideoModalState();
 }
 
 class _YouTubeVideoModalState extends State<YouTubeVideoModal> {
   late YoutubePlayerController _controller;
-
   @override
   void initState() {
     super.initState();
     final vId = YoutubePlayer.convertUrlToId(widget.videoId) ?? widget.videoId;
-
     _controller = YoutubePlayerController(
       initialVideoId: vId,
       flags: const YoutubePlayerFlags(
