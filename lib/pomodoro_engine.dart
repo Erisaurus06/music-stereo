@@ -2,22 +2,56 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Para la vibración
 import 'package:supabase_flutter/supabase_flutter.dart'; // Para la base de datos
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 enum PomodoroState { focus, shortBreak, longBreak, idle }
 
 class PomodoroEngine {
+  // ✨ NUEVO: Variables configurables (por defecto 25 min estudio / 5 min descanso)
+  static int focusDurationInSeconds = 1500;
+  static int breakDurationInSeconds = 300;
+
   static final ValueNotifier<int> secondsRemaining = ValueNotifier(
-    1500,
-  ); // 25 min
+    focusDurationInSeconds,
+  );
   static final ValueNotifier<PomodoroState> currentState = ValueNotifier(
     PomodoroState.idle,
   );
   static Timer? _timer;
+  static final FlutterLocalNotificationsPlugin _notificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  static Future<void> initNotifications() async {
+    // Configuramos el icono de la notificación (usa el por defecto de Android)
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+          android: initializationSettingsAndroid,
+          iOS: initializationSettingsIOS,
+        );
+    await _notificationsPlugin.initialize(initializationSettings);
+  }
+
+  // ✨ NUEVO: Método para que puedas cambiar los tiempos desde tu pantalla de Configuración
+  static void setDurations(int focusMinutes, int breakMinutes) {
+    focusDurationInSeconds = focusMinutes * 60;
+    breakDurationInSeconds = breakMinutes * 60;
+    if (currentState.value == PomodoroState.idle) {
+      secondsRemaining.value = focusDurationInSeconds;
+    }
+  }
 
   static void startTimer() {
     if (currentState.value == PomodoroState.idle) {
       currentState.value = PomodoroState.focus;
-      secondsRemaining.value = 1500;
+      secondsRemaining.value = focusDurationInSeconds;
     }
 
     _timer?.cancel();
@@ -31,7 +65,8 @@ class PomodoroEngine {
   }
 
   static Future<void> _switchPhase() async {
-    HapticFeedback.vibrate(); // ✨ Aviso físico de que terminó el tiempo
+    // ✨ Haptics modernos: Un golpe seco y premium típico de dispositivos Ultra/Pro
+    HapticFeedback.heavyImpact();
 
     if (currentState.value == PomodoroState.focus) {
       // ✨ ¡NUEVO! Guardar sesión exitosa en la nube
@@ -51,16 +86,51 @@ class PomodoroEngine {
       }
 
       currentState.value = PomodoroState.shortBreak;
-      secondsRemaining.value = 300; // 5 min descanso
+      secondsRemaining.value = breakDurationInSeconds;
+
+      // ✨ Lanzar Notificación Push Local
+      await _showPushNotification(
+        "¡Tiempo de Descanso! ☕",
+        "Tu sesión de 25 minutos ha terminado. ¡Tómate un respiro!",
+      );
     } else {
       currentState.value = PomodoroState.focus;
-      secondsRemaining.value = 1500; // 25 min estudio
+      secondsRemaining.value = focusDurationInSeconds;
+
+      // ✨ Lanzar Notificación Push Local
+      await _showPushNotification(
+        "¡Hora de Concentrarse! 🎯",
+        "El descanso terminó. ¡Vamos a darle con todo!",
+      );
     }
+  }
+
+  static Future<void> _showPushNotification(String title, String body) async {
+    const AndroidNotificationDetails
+    androidDetails = AndroidNotificationDetails(
+      'pomodoro_channel_v2', // ✨ IMPORTANTE: Cambiar el ID del canal para registrar el nuevo sonido
+      'Alertas Pomodoro',
+      channelDescription: 'Notificaciones del temporizador Pomodoro',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound(
+        'tono_pomodoro',
+      ), // ✨ Nombre del archivo SIN extensión
+    );
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      sound: 'tono_pomodoro.mp3',
+    ); // ✨ En iOS SÍ lleva la extensión
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+    await _notificationsPlugin.show(0, title, body, platformDetails);
   }
 
   static void stopTimer() {
     _timer?.cancel();
     currentState.value = PomodoroState.idle;
-    secondsRemaining.value = 1500;
+    secondsRemaining.value = focusDurationInSeconds;
   }
 }

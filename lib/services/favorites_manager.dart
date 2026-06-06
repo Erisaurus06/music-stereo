@@ -11,9 +11,13 @@ class FavoritesManager {
     final prefs = await SharedPreferences.getInstance();
     final String? favsJson = prefs.getString('favorites_data');
     if (favsJson != null) {
-      favoriteItems.value = List<Map<String, dynamic>>.from(
-        json.decode(favsJson),
-      );
+      try {
+        favoriteItems.value = List<Map<String, dynamic>>.from(
+          json.decode(favsJson),
+        );
+      } catch (e) {
+        debugPrint("Error recuperando los favoritos de memoria: $e");
+      }
     }
   }
 

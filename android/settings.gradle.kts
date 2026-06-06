@@ -27,3 +27,6 @@ plugins {
 }
 
 include(":app")
+
+include(":spotify-app-remote")
+project(":spotify-app-remote").projectDir = File(rootProject.projectDir, "app/libs")

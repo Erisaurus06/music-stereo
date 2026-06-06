@@ -32,10 +32,15 @@ class _RadioViewState extends State<RadioView>
 
   Future<void> _cargarRadios([String query = ""]) async {
     setState(() => _isLoading = true);
-    if (query.isEmpty) {
-      _apiStations = await RadioEngine.getTopStations();
-    } else {
-      _apiStations = await RadioEngine.searchStations(query);
+    try {
+      if (query.isEmpty) {
+        _apiStations = await RadioEngine.getTopStations();
+      } else {
+        _apiStations = await RadioEngine.searchStations(query);
+      }
+    } catch (e) {
+      debugPrint("Error al buscar emisoras de radio: $e");
+      _apiStations = [];
     }
     if (mounted) setState(() => _isLoading = false);
   }
@@ -51,112 +56,149 @@ class _RadioViewState extends State<RadioView>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
+
+    // ✨ Lógica para adaptar el diseño a 3 botones o línea de gestos
+    double listBottomSpace = 150.0; // Espacio base para tu reproductor flotante
+    if (bottomPadding > 35) {
+      debugPrint("📱 Navegación: 3 Botones ($bottomPadding px)");
+      listBottomSpace += 20; // Espacio extra para que no choque con los botones
+    } else if (bottomPadding > 0) {
+      debugPrint("➖ Navegación: Línea de gestos ($bottomPadding px)");
+      listBottomSpace += bottomPadding + 10; // Espacio extra para la línea
+    } else {
+      debugPrint("🔳 Navegación: Oculta o inexistente");
+    }
 
     return SafeArea(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-            child: Text(
-              "Radio Global",
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 34,
-                color: theme.textTheme.bodyLarge?.color,
-                letterSpacing: -1,
-              ),
-            ),
-          ),
-
-          // 🔎 BARRA DE BÚSQUEDA CONECTADA A LA API
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-            child: Container(
-              decoration: BoxDecoration(
-                color: theme.cardColor,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onSubmitted: (val) {
-                  searchQuery.value = val;
-                  _cargarRadios(val); // ✨ Busca en internet al darle Enter
-                },
-                style: TextStyle(
-                  color: theme.textTheme.bodyLarge?.color,
-                  fontWeight: FontWeight.bold,
+      bottom:
+          false, // ✨ Permitimos que la lista llegue hasta abajo (Edge-to-Edge)
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxWidth: 840,
+          ), // ✨ Diseño adaptable para Mac/PC/Web
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                child: Text(
+                  "Radio Global",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800, // ✨ Tipografía más elegante
+                    fontSize: 38,
+                    color: theme.textTheme.bodyLarge?.color,
+                    letterSpacing: -1.2,
+                  ),
                 ),
-                decoration: InputDecoration(
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 15,
+              ),
+
+              // 🔎 BARRA DE BÚSQUEDA CONECTADA A LA API
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 5,
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withOpacity(0.05)),
                   ),
-                  hintText: "Buscar emisora y presiona Enter...",
-                  hintStyle: TextStyle(
-                    color: theme.textTheme.bodySmall?.color,
-                    fontWeight: FontWeight.normal,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.satellite_alt_rounded,
-                    color: theme.primaryColor,
-                  ),
-                  suffixIcon: ValueListenableBuilder<String>(
-                    valueListenable: searchQuery,
-                    builder: (context, query, _) {
-                      return query.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(
-                                Icons.clear_rounded,
-                                color: Colors.grey,
-                              ),
-                              onPressed: () {
-                                _searchController.clear();
-                                searchQuery.value = "";
-                                FocusScope.of(context).unfocus();
-                                _cargarRadios(); // Recarga las top
-                              },
-                            )
-                          : const SizedBox.shrink();
+                  child: TextField(
+                    controller: _searchController,
+                    onSubmitted: (val) {
+                      searchQuery.value = val;
+                      _cargarRadios(val); // ✨ Busca en internet al darle Enter
                     },
+                    style: TextStyle(
+                      color: theme.textTheme.bodyLarge?.color,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 15,
+                      ),
+                      hintText: "Buscar emisora y presiona Enter...",
+                      hintStyle: TextStyle(
+                        color: theme.textTheme.bodySmall?.color,
+                        fontWeight: FontWeight.normal,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.satellite_alt_rounded,
+                        color: theme.primaryColor,
+                      ),
+                      suffixIcon: ValueListenableBuilder<String>(
+                        valueListenable: searchQuery,
+                        builder: (context, query, _) {
+                          return query.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(
+                                    Icons.clear_rounded,
+                                    color: Colors.grey,
+                                  ),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    searchQuery.value = "";
+                                    FocusScope.of(context).unfocus();
+                                    _cargarRadios(); // Recarga las top
+                                  },
+                                )
+                              : const SizedBox.shrink();
+                        },
+                      ),
+                      border: InputBorder.none,
+                    ),
                   ),
-                  border: InputBorder.none,
                 ),
               ),
-            ),
-          ),
-          const SizedBox(height: 10),
+              const SizedBox(height: 10),
 
-          TabBar(
-            controller: _tabController,
-            indicatorColor: theme.primaryColor,
-            labelColor: theme.primaryColor,
-            unselectedLabelColor: Colors.grey,
-            indicatorWeight: 3,
-            dividerColor: Colors.transparent,
-            tabs: const [
-              Tab(text: "EXPLORAR"),
-              Tab(text: "FAVORITAS"),
+              TabBar(
+                controller: _tabController,
+                indicatorColor: theme.primaryColor,
+                labelColor: theme.primaryColor,
+                unselectedLabelColor: Colors.grey,
+                indicatorWeight: 3,
+                dividerColor: Colors.transparent,
+                tabs: const [
+                  Tab(text: "EXPLORAR"),
+                  Tab(text: "FAVORITAS"),
+                ],
+              ),
+
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  physics: const BouncingScrollPhysics(),
+                  children: [
+                    _buildRadioList(
+                      theme,
+                      isFavoritesTab: false,
+                      bottomSpace: listBottomSpace,
+                    ),
+                    _buildRadioList(
+                      theme,
+                      isFavoritesTab: true,
+                      bottomSpace: listBottomSpace,
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              physics: const BouncingScrollPhysics(),
-              children: [
-                _buildRadioList(theme, isFavoritesTab: false),
-                _buildRadioList(theme, isFavoritesTab: true),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildRadioList(ThemeData theme, {required bool isFavoritesTab}) {
+  Widget _buildRadioList(
+    ThemeData theme, {
+    required bool isFavoritesTab,
+    required double bottomSpace,
+  }) {
     if (_isLoading && !isFavoritesTab) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -182,91 +224,141 @@ class _RadioViewState extends State<RadioView>
           );
         }
 
-        return ListView.builder(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.only(
-            top: 10,
-            left: 20,
-            right: 20,
-            bottom: 150,
-          ),
-          itemCount: radiosToShow.length,
-          itemBuilder: (context, index) {
-            final radio = radiosToShow[index];
-            // Verificamos si la tarjeta actual existe en la base de datos de favoritos
-            bool isFav = favoritesList.any((fav) => fav.id == radio.id);
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final bool isWide =
+                constraints.maxWidth > 600; // ✨ Adapta a pantallas grandes
 
-            return _radioCard(theme, radio, isFav);
+            if (isWide) {
+              return GridView.builder(
+                physics: const BouncingScrollPhysics(),
+                padding: EdgeInsets.only(
+                  top: 10,
+                  left: 20,
+                  right: 20,
+                  bottom: bottomSpace,
+                ),
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 400,
+                  mainAxisExtent: 90, // Altura elegante para tarjetas
+                  crossAxisSpacing: 15,
+                  mainAxisSpacing: 15,
+                ),
+                itemCount: radiosToShow.length,
+                itemBuilder: (context, index) {
+                  final radio = radiosToShow[index];
+                  bool isFav = favoritesList.any((fav) => fav.id == radio.id);
+                  return _radioCard(theme, radio, isFav, isGrid: true);
+                },
+              );
+            }
+
+            return ListView.builder(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.only(
+                top: 10,
+                left: 20,
+                right: 20,
+                bottom: bottomSpace,
+              ),
+              itemCount: radiosToShow.length,
+              itemBuilder: (context, index) {
+                final radio = radiosToShow[index];
+                bool isFav = favoritesList.any((fav) => fav.id == radio.id);
+                return _radioCard(theme, radio, isFav, isGrid: false);
+              },
+            );
           },
         );
       },
     );
   }
 
-  Widget _radioCard(ThemeData theme, RadioStation radio, bool isFav) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        PlayerManager.playRadio(radio);
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 15),
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-        ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 15,
-            vertical: 8,
+  Widget _radioCard(
+    ThemeData theme,
+    RadioStation radio,
+    bool isFav, {
+    bool isGrid = false,
+  }) {
+    return Container(
+      margin: isGrid ? EdgeInsets.zero : const EdgeInsets.only(bottom: 15),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(24), // ✨ Bordes premium
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
           ),
-          leading: ClipRRect(
-            borderRadius: BorderRadius.circular(15),
-            child: Image.network(
-              radio.favicon.isNotEmpty
-                  ? radio.favicon
-                  : 'https://via.placeholder.com/150',
-              width: 55,
-              height: 55,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+        ],
+        border: Border.all(
+          color: theme.brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.05)
+              : Colors.black.withOpacity(0.03),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent, // Permite ver el fondo de la tarjeta
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          // ✨ Animación nativa fluida al tocar
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            PlayerManager.playRadio(radio);
+          },
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 15,
+              vertical: 8,
+            ),
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: Image.network(
+                radio.favicon.isNotEmpty
+                    ? radio.favicon
+                    : 'https://via.placeholder.com/150',
                 width: 55,
                 height: 55,
-                color: theme.primaryColor.withOpacity(0.2),
-                child: Icon(Icons.radio, color: theme.primaryColor),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 55,
+                  height: 55,
+                  color: theme.primaryColor.withOpacity(0.2),
+                  child: Icon(Icons.radio, color: theme.primaryColor),
+                ),
               ),
             ),
-          ),
-          title: Text(
-            radio.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: theme.textTheme.bodyLarge?.color,
+            title: Text(
+              radio.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: theme.textTheme.bodyLarge?.color,
+              ),
             ),
-          ),
-          subtitle: Text(
-            radio.country.isNotEmpty ? radio.country : "Global",
-            maxLines: 1,
-            style: TextStyle(
-              color: theme.primaryColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+            subtitle: Text(
+              radio.country.isNotEmpty ? radio.country : "Global",
+              maxLines: 1,
+              style: TextStyle(
+                color: theme.primaryColor,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          trailing: IconButton(
-            icon: Icon(
-              isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-              color: isFav ? Colors.redAccent : Colors.grey.withOpacity(0.5),
+            trailing: IconButton(
+              icon: Icon(
+                isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                color: isFav ? Colors.redAccent : Colors.grey.withOpacity(0.5),
+              ),
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                PlayerManager.toggleRadioFavorite(radio);
+              },
             ),
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              // ✨ GUARDAMOS EL OBJETO COMPLETO EN LA MEMORIA, NO SOLO EL NOMBRE
-              PlayerManager.toggleRadioFavorite(radio);
-            },
           ),
         ),
       ),

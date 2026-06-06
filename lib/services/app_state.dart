@@ -237,12 +237,24 @@ class AppState {
 class DinobotTheme {
   static const Color primaryBlue = Color(0xFF2979FF);
 
+  // ✨ TRANSICIONES DE PANTALLA PREMIUM Y NATIVAS (EDGE-TO-EDGE)
+  static const PageTransitionsTheme _premiumTransitions = PageTransitionsTheme(
+    builders: {
+      TargetPlatform.android:
+          ZoomPageTransitionsBuilder(), // Fluidez Pixel / Galaxy Ultra
+      TargetPlatform.iOS:
+          CupertinoPageTransitionsBuilder(), // Fluidez nativa iPhone Pro
+    },
+  );
+
   static ThemeData get lightTheme => ThemeData(
     brightness: Brightness.light,
     primaryColor: primaryBlue,
     scaffoldBackgroundColor: const Color(0xFFF5F5F7),
     cardColor: Colors.white,
     dividerColor: Colors.black12,
+    pageTransitionsTheme:
+        _premiumTransitions, // ✨ Inyectamos las animaciones al tema claro
     textTheme: const TextTheme(
       bodyLarge: TextStyle(color: Colors.black87),
       bodyMedium: TextStyle(color: Colors.black54),
@@ -257,6 +269,8 @@ class DinobotTheme {
     scaffoldBackgroundColor: const Color(0xFF09090B),
     cardColor: const Color(0xFF141416),
     dividerColor: Colors.white10,
+    pageTransitionsTheme:
+        _premiumTransitions, // ✨ Inyectamos las animaciones al tema oscuro
     textTheme: const TextTheme(
       bodyLarge: TextStyle(color: Colors.white),
       bodyMedium: TextStyle(color: Colors.white70),

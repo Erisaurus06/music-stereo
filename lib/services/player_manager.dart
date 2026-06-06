@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -14,10 +15,12 @@ import 'package:spotify_sdk/models/image_uri.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'radio_engine.dart';
 import 'app_state.dart';
 import '../artwork_engine.dart';
+import '../api_keys.dart';
 
 // --- EL DIRECTOR DE RÍOS (ESTADO ESTRICTO) ---
 enum AudioEngineType { local, spotify, radio, none }
@@ -32,6 +35,8 @@ class PlayerManager {
   static String? _currentRadioUrl;
   static http.Client? _radioRecordClient;
   static IOSink? _radioRecordSink;
+  static Timer?
+  _recordingTimer; // ✨ NUEVO: Temporizador de seguridad para grabar
 
   static final AudioPlayer player = AudioPlayer(
     audioPipeline: AudioPipeline(
@@ -56,8 +61,34 @@ class PlayerManager {
   static final ValueNotifier<dynamic> currentArtwork = ValueNotifier(null);
 
   static final ValueNotifier<Color> currentThemeColor = ValueNotifier(
-    const Color(0xFF1DB954),
+    const Color(0xFF2563EB), // ✨ Azul por defecto en lugar de Verde Spotify
   );
+
+  // ✨ NUEVO: Color dinámico para íconos y textos (Blanco o Negro) garantizando lectura
+  static final ValueNotifier<Color> currentForegroundColor = ValueNotifier(
+    Colors.white,
+  );
+
+  // ✨ NUEVO: Función inteligente para el Camaleón en dispositivos Pro/Ultra
+  static void updateThemeColor(Color newColor) {
+    currentThemeColor.value = newColor;
+    final bool isDark = newColor.computeLuminance() < 0.5;
+    currentForegroundColor.value = isDark ? Colors.white : Colors.black;
+
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark
+            ? Brightness.dark
+            : Brightness.light, // Magia en iOS
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
+      ),
+    );
+  }
 
   static final ValueNotifier<bool> isPlaying = ValueNotifier(false);
   static final ValueNotifier<Duration> position = ValueNotifier(Duration.zero);
@@ -83,8 +114,8 @@ class PlayerManager {
   static Future<void> connectToSpotify() async {
     try {
       final bool result = await SpotifySdk.connectToSpotifyRemote(
-        clientId: "TU_CLIENT_ID", // Reemplaza con tu Client ID
-        redirectUrl: "TU_REDIRECT_URL",
+        clientId: ApiKeys.spotifyClientId,
+        redirectUrl: "tecconnection://callback",
       );
       isSpotifyLinked.value = result;
       if (result) startSpotifyRadar();
@@ -109,6 +140,59 @@ class PlayerManager {
       }
     } else {
       playbackQueue = List.from(allLocalSongs.value);
+    }
+  }
+
+  static Future<void> loadFavoriteRadios() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? radiosJson = prefs.getString('favorite_radios_local');
+
+      List<RadioStation> localRadios = [];
+      if (radiosJson != null) {
+        final List<dynamic> decoded = jsonDecode(radiosJson);
+        localRadios = decoded
+            .map((item) => RadioStation.fromJson(item))
+            .toList();
+      }
+
+      // ✨ NUBE: Intentar recuperar los favoritos reales desde Supabase al iniciar
+      try {
+        final deSupabase = Supabase.instance.client;
+        final usuarioActual = deSupabase.auth.currentUser;
+
+        if (usuarioActual != null) {
+          final response = await deSupabase
+              .from('profiles')
+              .select('favorite_radios')
+              .eq('id', usuarioActual.id)
+              .maybeSingle(); // maybeSingle previene errores si el usuario aún no tiene registro
+
+          if (response != null && response['favorite_radios'] != null) {
+            final List<dynamic> nube = response['favorite_radios'];
+            localRadios = nube
+                .map((item) => RadioStation.fromJson(item))
+                .toList();
+
+            // Actualizar la memoria local para que coincida con la nube
+            await prefs.setString(
+              'favorite_radios_local',
+              jsonEncode(localRadios.map((r) => r.toJson()).toList()),
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint(
+          "⚠️ Usa favoritos locales (Error al conectar con la nube): $e",
+        );
+      }
+
+      favoriteRadios.value = localRadios;
+      debugPrint(
+        "📻 Radios favoritas cargadas: ${favoriteRadios.value.length}",
+      );
+    } catch (e) {
+      debugPrint("❌ Error cargando radios favoritas locales: $e");
     }
   }
 
@@ -171,7 +255,7 @@ class PlayerManager {
   }
 
   static Future<void> _updateDominantColorLocal(SongModel song) async {
-    currentThemeColor.value = const Color(0xFF2C2C2C);
+    updateThemeColor(const Color(0xFF2563EB)); // ✨ Azul si no hay portada local
     try {
       Uint8List? artwork = await audioQuery.queryArtwork(
         song.id,
@@ -181,10 +265,11 @@ class PlayerManager {
         final palette = await PaletteGenerator.fromImageProvider(
           MemoryImage(artwork),
         );
-        currentThemeColor.value =
-            palette.dominantColor?.color ??
-            palette.vibrantColor?.color ??
-            const Color(0xFF2C2C2C);
+        updateThemeColor(
+          palette.dominantColor?.color ??
+              palette.vibrantColor?.color ??
+              const Color(0xFF2563EB),
+        );
         return;
       }
       String? url = await ArtworkEngine.buscarPortada(
@@ -195,10 +280,11 @@ class PlayerManager {
         final palette = await PaletteGenerator.fromImageProvider(
           NetworkImage(url),
         );
-        currentThemeColor.value =
-            palette.dominantColor?.color ??
-            palette.vibrantColor?.color ??
-            const Color(0xFF2C2C2C);
+        updateThemeColor(
+          palette.dominantColor?.color ??
+              palette.vibrantColor?.color ??
+              const Color(0xFF2563EB),
+        );
       }
     } catch (e) {
       debugPrint("Error color: $e");
@@ -226,11 +312,16 @@ class PlayerManager {
                     final palette = await PaletteGenerator.fromImageProvider(
                       MemoryImage(bytes),
                     );
-                    currentThemeColor.value =
-                        palette.dominantColor?.color ??
-                        palette.vibrantColor?.color ??
-                        const Color(0xFF1DB954);
-                  } catch (_) {}
+                    updateThemeColor(
+                      palette.dominantColor?.color ??
+                          palette.vibrantColor?.color ??
+                          const Color(0xFF2563EB),
+                    ); // ✨ Azul si falla Spotify
+                  } catch (e) {
+                    debugPrint(
+                      "⚠️ Error generando paleta desde imagen de Spotify: $e",
+                    );
+                  }
                 }
               });
             }
@@ -280,19 +371,40 @@ class PlayerManager {
 
   static Future<void> _crossfade(
     bool isFadingOut, {
-    int milliseconds = 400,
+    int milliseconds = 500, // ✨ Tiempo ajustado para mayor suavidad acústica
   }) async {
-    const steps = 20;
+    // ✨ Respetamos el ajuste: Si desactivó animaciones de alta fidelidad, hacemos corte directo.
+    if (!AppState.highFidelityAnimations.value) {
+      await player.setVolume(isFadingOut ? 0.0 : 1.0);
+      return;
+    }
+
+    const steps =
+        30; // ✨ Alta tasa de refresco (aprox 60 FPS) para que sea imperceptible
     final stepDuration = milliseconds ~/ steps;
 
     if (isFadingOut) {
       for (int i = steps; i >= 0; i--) {
-        await player.setVolume(i / steps);
+        // ✨ Curva Premium "Equal-Power" (Coseno) - Evita la caída brusca del volumen
+        double progress = i / steps;
+        double volume = cos((1.0 - progress) * (pi / 2));
+        try {
+          await player.setVolume(volume.clamp(0.0, 1.0));
+        } catch (_) {
+          break; // Detener si el reproductor dejó de estar disponible
+        }
         await Future.delayed(Duration(milliseconds: stepDuration));
       }
     } else {
       for (int i = 0; i <= steps; i++) {
-        await player.setVolume(i / steps);
+        // ✨ Curva Premium "Equal-Power" (Seno) - Entrada inmersiva
+        double progress = i / steps;
+        double volume = sin(progress * (pi / 2));
+        try {
+          await player.setVolume(volume.clamp(0.0, 1.0));
+        } catch (_) {
+          break;
+        }
         await Future.delayed(Duration(milliseconds: stepDuration));
       }
     }
@@ -313,7 +425,11 @@ class PlayerManager {
       if (isSpotifyLinked.value) {
         try {
           await SpotifySdk.pause();
-        } catch (_) {}
+        } catch (e) {
+          debugPrint(
+            "⚠️ No se pudo pausar Spotify previo a reproducir local: $e",
+          );
+        }
       }
 
       currentSong.value = song;
@@ -397,7 +513,11 @@ class PlayerManager {
       if (isSpotifyLinked.value) {
         try {
           await SpotifySdk.pause();
-        } catch (_) {}
+        } catch (e) {
+          debugPrint(
+            "⚠️ No se pudo pausar Spotify previo a reproducir radio: $e",
+          );
+        }
       }
 
       currentTitle.value = station.name;
@@ -409,15 +529,17 @@ class PlayerManager {
           final palette = await PaletteGenerator.fromImageProvider(
             NetworkImage(station.favicon),
           );
-          currentThemeColor.value =
-              palette.dominantColor?.color ??
-              palette.vibrantColor?.color ??
-              const Color(0xFF2C2C2C);
-        } catch (_) {
-          currentThemeColor.value = const Color(0xFF2C2C2C);
+          updateThemeColor(
+            palette.dominantColor?.color ??
+                palette.vibrantColor?.color ??
+                const Color(0xFF2563EB),
+          );
+        } catch (e) {
+          debugPrint("⚠️ Error generando paleta para la Radio: $e");
+          updateThemeColor(const Color(0xFF2563EB));
         }
       } else {
-        currentThemeColor.value = const Color(0xFF2C2C2C);
+        updateThemeColor(const Color(0xFF2563EB));
       }
 
       final audioSource = AudioSource.uri(
@@ -427,6 +549,9 @@ class PlayerManager {
           album: "Radio Global",
           title: station.name,
           artist: "En Vivo • ${station.country}",
+          artUri: station.favicon.isNotEmpty
+              ? Uri.parse(station.favicon)
+              : null, // ✨ Esto invoca al reproductor multimedia nativo
         ),
       );
 
@@ -456,6 +581,17 @@ class PlayerManager {
     // Actualiza la vista al instante
     favoriteRadios.value = actuales;
 
+    // ✨ GUARDAMOS LOCALMENTE PRIMERO (Para que funcione sin internet / sin login)
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String encodedData = jsonEncode(
+        actuales.map((r) => r.toJson()).toList(),
+      );
+      await prefs.setString('favorite_radios_local', encodedData);
+    } catch (e) {
+      debugPrint("❌ Error guardando radio local: $e");
+    }
+
     // Sube LA LISTA COMPLETA a Supabase usando el cliente oficial instanciado
     List<Object?> jsonList = actuales.map((r) => r.toJson()).toList();
     try {
@@ -464,10 +600,9 @@ class PlayerManager {
       final usuarioActual = deSupabase.auth.currentUser;
 
       if (usuarioActual != null) {
-        await deSupabase
-            .from('profiles')
-            .update({'favorite_radios': jsonList})
-            .eq('id', usuarioActual.id);
+        await deSupabase.from('profiles').upsert(
+          {'id': usuarioActual.id, 'favorite_radios': jsonList},
+        ); // ✨ Upsert garantiza que se guarde forzosamente, insertando el perfil si no existía
         debugPrint(
           "❤️ Favoritos de Radio sincronizados con Supabase: ${actuales.length}",
         );
@@ -535,7 +670,19 @@ class PlayerManager {
     if (activeEngine.value != AudioEngineType.radio || _currentRadioUrl == null)
       return;
     try {
-      final directory = Directory('/storage/emulated/0/Music/TecConnection');
+      // ✨ FIX CRÍTICO: Rutas seguras para Android 11+ e iOS
+      Directory? baseDir;
+      if (Platform.isAndroid) {
+        final dirs = await getExternalStorageDirectories(
+          type: StorageDirectory.music,
+        );
+        baseDir = dirs?.first;
+      } else {
+        baseDir = await getApplicationDocumentsDirectory();
+      }
+      if (baseDir == null) return;
+
+      final directory = Directory('${baseDir.path}/TecConnection');
       if (!await directory.exists()) await directory.create(recursive: true);
 
       String safeName = currentTitle.value
@@ -566,6 +713,15 @@ class PlayerManager {
 
       isRecording.value = true;
       HapticFeedback.vibrate();
+
+      // ✨ NUEVO: Límite de seguridad de 60 minutos para no llenar la memoria del teléfono.
+      _recordingTimer?.cancel();
+      _recordingTimer = Timer(const Duration(minutes: 60), () {
+        debugPrint(
+          "⏱️ Límite de seguridad de 60 minutos alcanzado. Guardando grabación.",
+        );
+        stopRecording(null);
+      });
     } catch (e) {
       debugPrint("Error al grabar stream: $e");
     }
@@ -576,6 +732,10 @@ class PlayerManager {
     try {
       isRecording.value = false;
       HapticFeedback.heavyImpact();
+
+      // ✨ NUEVO: Cancelamos el temporizador si el usuario detuvo la grabación manualmente
+      _recordingTimer?.cancel();
+      _recordingTimer = null;
 
       _radioRecordClient?.close();
       _radioRecordClient = null;

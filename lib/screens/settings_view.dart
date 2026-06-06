@@ -13,9 +13,8 @@ import '../models/app_models.dart';
 import '../main.dart'; // Temporal: para leer herramientas que siguen en main.dart
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-import '../services/app_state.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 
 // --- 6. AJUSTES (Settings Pro con Nuevas Opciones y Memoria) ---
 class SettingsProView extends StatefulWidget {
@@ -131,8 +130,9 @@ class _SettingsProViewState extends State<SettingsProView> {
                         ],
                         onChanged: (v) {
                           AppState.setTheme(v!);
-                          if (AppState.enableHaptics.value)
+                          if (AppState.enableHaptics.value) {
                             HapticFeedback.selectionClick();
+                          }
                         },
                       ),
                 ),
@@ -191,8 +191,9 @@ class _SettingsProViewState extends State<SettingsProView> {
                         ],
                         onChanged: (v) {
                           AppState.setPlayerLayout(v!);
-                          if (AppState.enableHaptics.value)
+                          if (AppState.enableHaptics.value) {
                             HapticFeedback.selectionClick();
+                          }
                         },
                       ),
                 ),
@@ -241,8 +242,9 @@ class _SettingsProViewState extends State<SettingsProView> {
                   value: anims,
                   onChanged: (v) {
                     AppState.setAnimations(v);
-                    if (AppState.enableHaptics.value)
+                    if (AppState.enableHaptics.value) {
                       HapticFeedback.lightImpact();
+                    }
                   },
                 ),
               ),
@@ -352,6 +354,105 @@ class _SettingsProViewState extends State<SettingsProView> {
                         color: theme.dividerColor,
                       );
                     },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 15),
+          // ☁️ BOTÓN PARA OBTENER FONDO DE API
+          GestureDetector(
+            onTap: () async {
+              HapticFeedback.selectionClick();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text(
+                    "☁️ Buscando fondo estético en la nube...",
+                  ),
+                  backgroundColor: theme.primaryColor,
+                ),
+              );
+              try {
+                // Genera un fondo aleatorio con desenfoque elegante de Picsum
+                final url = Uri.parse("https://picsum.photos/800/1200/?blur=2");
+                final response = await http
+                    .get(url)
+                    .timeout(const Duration(seconds: 10));
+
+                if (response.statusCode == 200) {
+                  final directory = await getApplicationDocumentsDirectory();
+                  final String newPath =
+                      '${directory.path}/api_bg_${DateTime.now().millisecondsSinceEpoch}.jpg';
+                  final File newImage = await File(
+                    newPath,
+                  ).writeAsBytes(response.bodyBytes);
+
+                  AppState.backgroundImagePath.value = newImage.path;
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text("🌌 Fondo estético activado"),
+                        backgroundColor: theme.primaryColor,
+                      ),
+                    );
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("❌ Error al conectar con la API de fondos"),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withOpacity(0.05)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.purpleAccent.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.cloud_download_rounded,
+                      color: Colors.purpleAccent,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Fondo Aleatorio (Nube)",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Descarga un fondo estético por API",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.textTheme.bodyMedium?.color,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

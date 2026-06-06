@@ -33,13 +33,18 @@ class ArtworkEngine {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['resultCount'] > 0) {
+        if (data['resultCount'] != null &&
+            data['resultCount'] > 0 &&
+            data['results'] != null &&
+            (data['results'] as List).isNotEmpty) {
           // El hack de Apple Music: Cambiamos 100x100 por 800x800 para calidad 4K
-          String imgUrl = data['results'][0]['artworkUrl100'];
-          imgUrl = imgUrl.replaceAll('100x100bb', '800x800bb');
+          String? imgUrl = data['results'][0]['artworkUrl100'];
+          if (imgUrl != null) {
+            imgUrl = imgUrl.replaceAll('100x100bb', '800x800bb');
 
-          _cache[query] = imgUrl; // Guardamos en memoria
-          return imgUrl;
+            _cache[query] = imgUrl; // Guardamos en memoria
+            return imgUrl;
+          }
         }
       }
     } catch (e) {

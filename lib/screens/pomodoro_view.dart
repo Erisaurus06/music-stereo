@@ -44,6 +44,11 @@ class PomodoroController with WidgetsBindingObserver {
   int tiempoTotalFase = 1500;
   DateTime? _tiempoFondo;
 
+  // ✨ NUEVO: Variables para almacenar los tiempos personalizados
+  int focusTimeInSeconds = 1500;
+  int shortBreakTimeInSeconds = 300;
+  int longBreakTimeInSeconds = 900;
+
   PomodoroController(this.ref) {
     WidgetsBinding.instance.addObserver(this);
   }
@@ -83,10 +88,15 @@ class PomodoroController with WidgetsBindingObserver {
     }
   }
 
-  void setModo(int minutos) {
+  void setModo(int minutos, {int breakMinutos = 5}) {
+    focusTimeInSeconds = minutos * 60;
+    shortBreakTimeInSeconds = breakMinutos * 60;
+    longBreakTimeInSeconds =
+        (breakMinutos * 3) * 60; // El descanso largo es 3 veces el corto
+
     if (ref.read(pomodoroPhaseProvider) == PomodoroState.idle) {
-      ref.read(pomodoroSecondsProvider.notifier).state = minutos * 60;
-      tiempoTotalFase = minutos * 60;
+      ref.read(pomodoroSecondsProvider.notifier).state = focusTimeInSeconds;
+      tiempoTotalFase = focusTimeInSeconds;
     }
   }
 
@@ -117,25 +127,28 @@ class PomodoroController with WidgetsBindingObserver {
       if ((sesiones + 1) % 4 == 0) {
         ref.read(pomodoroPhaseProvider.notifier).state =
             PomodoroState.longBreak;
-        ref.read(pomodoroSecondsProvider.notifier).state = 900;
-        tiempoTotalFase = 900;
+        ref.read(pomodoroSecondsProvider.notifier).state =
+            longBreakTimeInSeconds;
+        tiempoTotalFase = longBreakTimeInSeconds;
       } else {
         ref.read(pomodoroPhaseProvider.notifier).state =
             PomodoroState.shortBreak;
-        ref.read(pomodoroSecondsProvider.notifier).state = 300;
-        tiempoTotalFase = 300;
+        ref.read(pomodoroSecondsProvider.notifier).state =
+            shortBreakTimeInSeconds;
+        tiempoTotalFase = shortBreakTimeInSeconds;
       }
     } else {
       ref.read(pomodoroPhaseProvider.notifier).state = PomodoroState.focus;
-      ref.read(pomodoroSecondsProvider.notifier).state = 1500;
-      tiempoTotalFase = 1500;
+      ref.read(pomodoroSecondsProvider.notifier).state = focusTimeInSeconds;
+      tiempoTotalFase = focusTimeInSeconds;
     }
   }
 
   void stopTimer() {
     _timer?.cancel();
     ref.read(pomodoroPhaseProvider.notifier).state = PomodoroState.idle;
-    ref.read(pomodoroSecondsProvider.notifier).state = tiempoTotalFase;
+    ref.read(pomodoroSecondsProvider.notifier).state = focusTimeInSeconds;
+    tiempoTotalFase = focusTimeInSeconds;
   }
 }
 
@@ -196,13 +209,28 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
     return ValueListenableBuilder<Color>(
       valueListenable: PlayerManager.currentThemeColor,
       builder: (context, themeColor, _) {
-        final bool isLightColor = themeColor.computeLuminance() > 0.5;
+        // ✨ CEREBRO DE LUMINOSIDAD: Aclara el color si es muy oscuro en modo oscuro
+        final bool isLightMode = theme.brightness == Brightness.light;
+        final HSLColor hsl = HSLColor.fromColor(themeColor);
+
+        Color safeThemeColor = themeColor;
+        if (isLightMode && hsl.lightness > 0.6) {
+          safeThemeColor = hsl
+              .withLightness(0.4)
+              .toColor(); // Oscurece si es muy claro en modo claro
+        } else if (!isLightMode && hsl.lightness < 0.4) {
+          safeThemeColor = hsl
+              .withLightness(0.65)
+              .toColor(); // Aclara si es muy oscuro en modo oscuro
+        }
+
+        final bool isLightColor = safeThemeColor.computeLuminance() > 0.5;
         final Color dynamicTextColor = isLightColor
             ? Colors.black
             : Colors.white;
         final Color glowColor = isLightColor
-            ? themeColor.withOpacity(0.7)
-            : themeColor.withOpacity(0.9);
+            ? safeThemeColor.withOpacity(0.7)
+            : safeThemeColor.withOpacity(0.9);
 
         return SafeArea(
           child: Column(
@@ -265,12 +293,12 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: themeColor.withOpacity(0.15),
+                        color: safeThemeColor.withOpacity(0.15),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         Icons.psychology_rounded,
-                        color: themeColor,
+                        color: safeThemeColor,
                         size: 28,
                       ),
                     ),
@@ -369,7 +397,9 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                                   backgroundColor:
                                       theme.scaffoldBackgroundColor,
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                    isRunning ? themeColor : theme.dividerColor,
+                                    isRunning
+                                        ? safeThemeColor
+                                        : theme.dividerColor,
                                   ),
                                 ),
                               ),
@@ -395,7 +425,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                                     ),
                                     decoration: BoxDecoration(
                                       color: state == PomodoroState.focus
-                                          ? themeColor.withOpacity(0.2)
+                                          ? safeThemeColor.withOpacity(0.2)
                                           : (state == PomodoroState.idle
                                                 ? Colors.white10
                                                 : Colors.green.withOpacity(
@@ -404,7 +434,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
                                         color: state == PomodoroState.focus
-                                            ? themeColor
+                                            ? safeThemeColor
                                             : Colors.transparent,
                                       ),
                                     ),
@@ -417,7 +447,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                                       style: TextStyle(
                                         fontWeight: FontWeight.w900,
                                         color: state == PomodoroState.focus
-                                            ? themeColor
+                                            ? safeThemeColor
                                             : (state == PomodoroState.idle
                                                   ? Colors.grey
                                                   : Colors.green),
@@ -446,7 +476,8 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                                   theme,
                                   "25m",
                                   25,
-                                  themeColor,
+                                  5,
+                                  safeThemeColor,
                                   controller,
                                 ),
                                 const SizedBox(width: 10),
@@ -455,7 +486,8 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                                   theme,
                                   "50m",
                                   50,
-                                  themeColor,
+                                  10,
+                                  safeThemeColor,
                                   controller,
                                 ),
                                 const SizedBox(width: 10),
@@ -464,14 +496,15 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                                   theme,
                                   "90m",
                                   90,
-                                  themeColor,
+                                  15,
+                                  safeThemeColor,
                                   controller,
                                 ),
                                 const SizedBox(width: 10),
                                 _customTimeButton(
                                   context,
                                   theme,
-                                  themeColor,
+                                  safeThemeColor,
                                   controller,
                                 ),
                               ],
@@ -498,8 +531,8 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                               gradient: state == PomodoroState.idle
                                   ? LinearGradient(
                                       colors: [
-                                        themeColor,
-                                        themeColor.withOpacity(0.8),
+                                        safeThemeColor,
+                                        safeThemeColor.withOpacity(0.8),
                                       ],
                                     )
                                   : const LinearGradient(
@@ -509,7 +542,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                               boxShadow: [
                                 BoxShadow(
                                   color: state == PomodoroState.idle
-                                      ? themeColor.withOpacity(0.4)
+                                      ? safeThemeColor.withOpacity(0.4)
                                       : Colors.red.withOpacity(0.4),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
@@ -551,7 +584,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                         // PANEL DE GAMIFICACIÓN Y MODO ZEN
                         _buildGamificationPanel(
                           theme,
-                          themeColor,
+                          safeThemeColor,
                           ref,
                           sesiones,
                           isZenMode,
@@ -561,7 +594,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                         // ECOSISTEMA MULTIMEDIA
                         _buildMediaEcosystemPanel(
                           theme,
-                          themeColor,
+                          safeThemeColor,
                           context,
                           ref,
                         ),
@@ -1054,14 +1087,15 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
     BuildContext context,
     ThemeData theme,
     String label,
-    int min,
+    int minFocus,
+    int minBreak,
     Color color,
     PomodoroController controller,
   ) {
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
-        controller.setModo(min);
+        controller.setModo(minFocus, breakMinutos: minBreak);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -1098,7 +1132,9 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
-        int minutosElegidos = 15;
+        int focusElegido = controller.focusTimeInSeconds ~/ 60;
+        int breakElegido = controller.shortBreakTimeInSeconds ~/ 60;
+
         showModalBottomSheet(
           context: context,
           backgroundColor: Colors.transparent,
@@ -1121,74 +1157,107 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                   ],
                 ),
                 child: SafeArea(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 50,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: Colors.white24,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      Text(
-                        "Tiempo a Medida",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: theme.textTheme.bodyLarge?.color,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        "$minutosElegidos minutos",
-                        style: TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold,
-                          color: color,
-                          fontFamily: 'monospace',
-                        ),
-                      ),
-                      Slider(
-                        value: minutosElegidos.toDouble(),
-                        min: 1,
-                        max: 120,
-                        divisions: 119,
-                        activeColor: color,
-                        inactiveColor: Colors.white10,
-                        onChanged: (v) {
-                          setState(() => minutosElegidos = v.toInt());
-                          HapticFeedback.lightImpact();
-                        },
-                      ),
-                      const SizedBox(height: 30),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 55,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: color,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          onPressed: () {
-                            controller.setModo(minutosElegidos);
-                            Navigator.pop(context);
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          "Tiempos a Medida",
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+
+                        // ✨ SECCIÓN ENFOQUE
+                        Text(
+                          "Estudio: $focusElegido min",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                        Slider(
+                          value: focusElegido.toDouble(),
+                          min: 1,
+                          max: 120,
+                          divisions: 119,
+                          activeColor: color,
+                          inactiveColor: Colors.white10,
+                          onChanged: (v) {
+                            setState(() => focusElegido = v.toInt());
+                            HapticFeedback.lightImpact();
                           },
-                          child: const Text(
-                            "ESTABLECER",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // ✨ SECCIÓN DESCANSO
+                        Text(
+                          "Descanso: $breakElegido min",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors
+                                .greenAccent, // Distintivo verde para el descanso
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                        Slider(
+                          value: breakElegido.toDouble(),
+                          min: 1,
+                          max: 60,
+                          divisions: 59,
+                          activeColor: Colors.greenAccent,
+                          inactiveColor: Colors.white10,
+                          onChanged: (v) {
+                            setState(() => breakElegido = v.toInt());
+                            HapticFeedback.lightImpact();
+                          },
+                        ),
+
+                        const SizedBox(height: 30),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 55,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: color,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                            onPressed: () {
+                              controller.setModo(
+                                focusElegido,
+                                breakMinutos: breakElegido,
+                              );
+                              Navigator.pop(context);
+                            },
+                            child: const Text(
+                              "ESTABLECER TIEMPOS",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );
