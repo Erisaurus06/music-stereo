@@ -14,6 +14,7 @@ import 'library_view.dart';
 import 'pomodoro_view.dart';
 import 'radio_view.dart';
 import 'settings_view.dart';
+import '../widgets/bluetooth_panel.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -454,9 +455,7 @@ class _MainNavigationState extends State<MainNavigation> {
                                   ),
                                   onPressed: () {
                                     HapticFeedback.heavyImpact();
-                                    AppSettings.openAppSettings(
-                                      type: AppSettingsType.bluetooth,
-                                    );
+                                    BluetoothPanel.show(context);
                                   },
                                 ),
                                 IconButton(

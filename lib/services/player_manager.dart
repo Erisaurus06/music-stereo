@@ -20,27 +20,34 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'radio_engine.dart';
 import 'app_state.dart';
 import '../artwork_engine.dart';
-import '../api_keys.dart';
+import 'equalizer_manager.dart';
+import 'recording_manager.dart';
+import 'spotify_manager.dart';
 
 // --- EL DIRECTOR DE RÍOS (ESTADO ESTRICTO) ---
 enum AudioEngineType { local, spotify, radio, none }
 
 class PlayerManager {
-  static final AndroidEqualizer equalizer = AndroidEqualizer();
-  static final AndroidLoudnessEnhancer loudnessEnhancer =
-      AndroidLoudnessEnhancer();
+  // 💡 FACADE: Exponemos propiedades de los submódulos para no romper la UI de tus vistas
+  static AndroidEqualizer get equalizer => EqualizerManager.equalizer;
+  static AndroidLoudnessEnhancer get loudnessEnhancer =>
+      EqualizerManager.loudnessEnhancer;
+  static ValueNotifier<bool> get isRecording => RecordingManager.isRecording;
+  static ValueNotifier<bool> get isSpotifyLinked =>
+      SpotifyManager.isSpotifyLinked;
 
-  static final ValueNotifier<bool> isRecording = ValueNotifier(false);
-  static String? _currentRecordPath;
-  static String? _currentRadioUrl;
-  static http.Client? _radioRecordClient;
-  static IOSink? _radioRecordSink;
-  static Timer?
-  _recordingTimer; // ✨ NUEVO: Temporizador de seguridad para grabar
+  static Future<void> startRecording() => RecordingManager.startRecording();
+  static Future<void> stopRecording(BuildContext? context) =>
+      RecordingManager.stopRecording(context);
+  static Future<void> connectToSpotify() => SpotifyManager.connectToSpotify();
+  static void startSpotifyRadar() => SpotifyManager.startSpotifyRadar();
 
   static final AudioPlayer player = AudioPlayer(
     audioPipeline: AudioPipeline(
-      androidAudioEffects: [loudnessEnhancer, equalizer],
+      androidAudioEffects: [
+        EqualizerManager.loudnessEnhancer,
+        EqualizerManager.equalizer,
+      ],
     ),
   );
 
@@ -49,7 +56,6 @@ class PlayerManager {
   static final ValueNotifier<AudioEngineType> activeEngine = ValueNotifier(
     AudioEngineType.none,
   );
-  static final ValueNotifier<bool> isSpotifyLinked = ValueNotifier(false);
   static final ValueNotifier<SongModel?> currentSong = ValueNotifier(null);
 
   static final ValueNotifier<String> currentTitle = ValueNotifier(
@@ -108,21 +114,6 @@ class PlayerManager {
 
   static final ValueNotifier<bool> isShuffle = ValueNotifier(false);
   static final ValueNotifier<int> repeatMode = ValueNotifier(0);
-
-  static Timer? _spotifyTimer;
-
-  static Future<void> connectToSpotify() async {
-    try {
-      final bool result = await SpotifySdk.connectToSpotifyRemote(
-        clientId: ApiKeys.spotifyClientId,
-        redirectUrl: "tecconnection://callback",
-      );
-      isSpotifyLinked.value = result;
-      if (result) startSpotifyRadar();
-    } catch (e) {
-      debugPrint("❌ Error al enlazar Spotify: $e");
-    }
-  }
 
   static void reorderQueue(int oldIndex, int newIndex) {
     if (newIndex > oldIndex) newIndex -= 1;
@@ -230,6 +221,29 @@ class PlayerManager {
 
   static Future<void> loadLocalMusic() async {
     try {
+      // ✨ NUEVO: Sistema dinámico de permisos para Android 13+ y versiones anteriores
+      if (Platform.isAndroid) {
+        // Verificamos el estado actual
+        PermissionStatus audioStatus = await Permission.audio.status;
+        PermissionStatus storageStatus = await Permission.storage.status;
+
+        // Si ninguno está concedido, los solicitamos al usuario
+        if (!audioStatus.isGranted && !storageStatus.isGranted) {
+          Map<Permission, PermissionStatus> statuses = await [
+            Permission.audio, // <- Se usa en Android 13+
+            Permission.storage, // <- Se usa en Android 12 e inferiores
+          ].request();
+
+          if (statuses[Permission.audio] != PermissionStatus.granted &&
+              statuses[Permission.storage] != PermissionStatus.granted) {
+            debugPrint(
+              "❌ Permisos denegados. No se puede escanear música local.",
+            );
+            return; // Detenemos la carga si el usuario rechaza el acceso
+          }
+        }
+      }
+
       List<SongModel> songs = await audioQuery.querySongs(
         sortType: null,
         orderType: OrderType.ASC_OR_SMALLER,
@@ -288,75 +302,6 @@ class PlayerManager {
       }
     } catch (e) {
       debugPrint("Error color: $e");
-    }
-  }
-
-  static void startSpotifyRadar() {
-    try {
-      SpotifySdk.subscribePlayerState().listen((state) {
-        if (state.track != null) {
-          if (!state.isPaused &&
-              activeEngine.value != AudioEngineType.spotify) {
-            activeEngine.value = AudioEngineType.spotify;
-            player.pause();
-          }
-
-          if (activeEngine.value == AudioEngineType.spotify) {
-            if (currentTitle.value != state.track!.name) {
-              SpotifySdk.getImage(
-                imageUri: state.track!.imageUri,
-                dimension: ImageDimension.large,
-              ).then((bytes) async {
-                if (bytes != null) {
-                  try {
-                    final palette = await PaletteGenerator.fromImageProvider(
-                      MemoryImage(bytes),
-                    );
-                    updateThemeColor(
-                      palette.dominantColor?.color ??
-                          palette.vibrantColor?.color ??
-                          const Color(0xFF2563EB),
-                    ); // ✨ Azul si falla Spotify
-                  } catch (e) {
-                    debugPrint(
-                      "⚠️ Error generando paleta desde imagen de Spotify: $e",
-                    );
-                  }
-                }
-              });
-            }
-
-            currentTitle.value = state.track!.name;
-            currentArtist.value =
-                state.track!.artist.name ?? "Artista Desconocido";
-            currentArtwork.value = state.track!.imageUri;
-
-            isPlaying.value = !state.isPaused;
-
-            // ✨ FIX: Control manual del Slider en Spotify
-            if (!isUserDraggingSlider) {
-              position.value = Duration(milliseconds: state.playbackPosition);
-            }
-            duration.value = Duration(milliseconds: state.track!.duration);
-
-            _spotifyTimer?.cancel();
-            if (!state.isPaused) {
-              _spotifyTimer = Timer.periodic(const Duration(seconds: 1), (
-                timer,
-              ) {
-                if (position.value.inSeconds < duration.value.inSeconds &&
-                    !isUserDraggingSlider) {
-                  position.value = Duration(
-                    seconds: position.value.inSeconds + 1,
-                  );
-                }
-              });
-            }
-          }
-        }
-      });
-    } catch (e) {
-      debugPrint("Error en Río Spotify: $e");
     }
   }
 
@@ -421,8 +366,8 @@ class PlayerManager {
       await player.stop();
       await player.setVolume(1.0);
 
-      _spotifyTimer?.cancel();
-      if (isSpotifyLinked.value) {
+      SpotifyManager.spotifyTimer?.cancel();
+      if (SpotifyManager.isSpotifyLinked.value) {
         try {
           await SpotifySdk.pause();
         } catch (e) {
@@ -504,13 +449,13 @@ class PlayerManager {
   static Future<void> playRadio(RadioStation station) async {
     try {
       activeEngine.value = AudioEngineType.radio;
-      _currentRadioUrl = station.url;
+      RecordingManager.currentRadioUrl = station.url;
       isPlaying.value = false;
       await player.stop();
       await player.setVolume(1.0);
 
-      _spotifyTimer?.cancel();
-      if (isSpotifyLinked.value) {
+      SpotifyManager.spotifyTimer?.cancel();
+      if (SpotifyManager.isSpotifyLinked.value) {
         try {
           await SpotifySdk.pause();
         } catch (e) {
@@ -619,7 +564,7 @@ class PlayerManager {
   static Future<void> playNext() async {
     if (AppState.mixedPlayback.value) {
       bool switchRiver = Random().nextBool();
-      if (switchRiver && isSpotifyLinked.value) {
+      if (switchRiver && SpotifyManager.isSpotifyLinked.value) {
         activeEngine.value = AudioEngineType.spotify;
         SpotifySdk.skipNext();
         return;
@@ -663,98 +608,6 @@ class PlayerManager {
       position.value = d;
     } else {
       player.seek(d);
-    }
-  }
-
-  static Future<void> startRecording() async {
-    if (activeEngine.value != AudioEngineType.radio || _currentRadioUrl == null)
-      return;
-    try {
-      // ✨ FIX CRÍTICO: Rutas seguras para Android 11+ e iOS
-      Directory? baseDir;
-      if (Platform.isAndroid) {
-        final dirs = await getExternalStorageDirectories(
-          type: StorageDirectory.music,
-        );
-        baseDir = dirs?.first;
-      } else {
-        baseDir = await getApplicationDocumentsDirectory();
-      }
-      if (baseDir == null) return;
-
-      final directory = Directory('${baseDir.path}/TecConnection');
-      if (!await directory.exists()) await directory.create(recursive: true);
-
-      String safeName = currentTitle.value
-          .replaceAll(RegExp(r'[^\w\s]+'), '')
-          .replaceAll(' ', '_');
-      String fileName =
-          "REC_${safeName}_${DateTime.now().millisecondsSinceEpoch}.mp3";
-      _currentRecordPath = '${directory.path}/$fileName';
-
-      _radioRecordClient = http.Client();
-      final request = http.Request('GET', Uri.parse(_currentRadioUrl!));
-      final response = await _radioRecordClient!.send(request);
-
-      final file = File(_currentRecordPath!);
-      _radioRecordSink = file.openWrite();
-
-      response.stream.listen(
-        (chunk) {
-          _radioRecordSink?.add(chunk);
-        },
-        onError: (e) {
-          stopRecording(null);
-        },
-        onDone: () {
-          stopRecording(null);
-        },
-      );
-
-      isRecording.value = true;
-      HapticFeedback.vibrate();
-
-      // ✨ NUEVO: Límite de seguridad de 60 minutos para no llenar la memoria del teléfono.
-      _recordingTimer?.cancel();
-      _recordingTimer = Timer(const Duration(minutes: 60), () {
-        debugPrint(
-          "⏱️ Límite de seguridad de 60 minutos alcanzado. Guardando grabación.",
-        );
-        stopRecording(null);
-      });
-    } catch (e) {
-      debugPrint("Error al grabar stream: $e");
-    }
-  }
-
-  static Future<void> stopRecording(BuildContext? context) async {
-    if (!isRecording.value) return;
-    try {
-      isRecording.value = false;
-      HapticFeedback.heavyImpact();
-
-      // ✨ NUEVO: Cancelamos el temporizador si el usuario detuvo la grabación manualmente
-      _recordingTimer?.cancel();
-      _recordingTimer = null;
-
-      _radioRecordClient?.close();
-      _radioRecordClient = null;
-
-      await _radioRecordSink?.flush();
-      await _radioRecordSink?.close();
-      _radioRecordSink = null;
-
-      if (context != null && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("📼 ¡Grabación guardada en tu biblioteca!"),
-            backgroundColor: currentThemeColor.value,
-          ),
-        );
-      }
-      await loadLocalMusic();
-    } catch (e) {
-      debugPrint("Error cerrando archivo: $e");
     }
   }
 }

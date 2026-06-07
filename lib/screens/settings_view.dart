@@ -15,6 +15,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import '../widgets/bluetooth_panel.dart';
 
 // --- 6. AJUSTES (Settings Pro con Nuevas Opciones y Memoria) ---
 class SettingsProView extends StatefulWidget {
@@ -560,6 +561,34 @@ class _SettingsProViewState extends State<SettingsProView> {
                 "YouTube Music",
                 Colors.red,
                 Icons.play_circle_fill_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // --- BLOQUE 3.5: BLUETOOTH Y DISPOSITIVOS ---
+          _buildConfigCard(
+            context,
+            title: "Dispositivos y Sonido",
+            children: [
+              ListTile(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  BluetoothPanel.show(context);
+                },
+                leading: const Icon(
+                  Icons.bluetooth_audio_rounded,
+                  color: Colors.blueAccent,
+                  size: 28,
+                ),
+                title: const Text(
+                  "Bluetooth y Sonido",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text(
+                  "Gestiona conexiones y volumen",
+                  style: TextStyle(fontSize: 12),
+                ),
               ),
             ],
           ),

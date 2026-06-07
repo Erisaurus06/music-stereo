@@ -7,10 +7,47 @@ import 'package:flutter/material.dart';
 class LyricsEngine {
   // Función principal a la que llamará nuestra UI
   static Future<String> fetchLyrics(String title, String artist) async {
+    final cleanTitle = title
+        .replaceAll(RegExp(r'\(.*\)'), '')
+        .replaceAll(RegExp(r'\[.*\]'), '')
+        .trim();
+    final cleanArtist = artist.replaceAll(RegExp(r'\(.*\)'), '').trim();
+
+    // ✨ PLAN A: LRCLIB (El único que proporciona letras SINCRONIZADAS para animar)
+    try {
+      debugPrint("Buscando letra sincronizada en LRCLIB para: $cleanTitle");
+      final lrclibUrl = Uri.parse(
+        "https://lrclib.net/api/search?q=${Uri.encodeComponent('$cleanTitle $cleanArtist')}",
+      );
+
+      final response = await http
+          .get(lrclibUrl)
+          .timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        final List data = json.decode(response.body);
+        if (data.isNotEmpty) {
+          // Buscamos primero la versión sincronizada para tu animación
+          final syncedLyrics = data[0]['syncedLyrics'];
+          if (syncedLyrics != null &&
+              syncedLyrics.toString().trim().isNotEmpty) {
+            return syncedLyrics; // ¡Éxito! Retorna formato [00:12.33]
+          }
+          // Si no hay sincronizada, devolvemos texto plano de LRCLIB
+          final plainLyrics = data[0]['plainLyrics'];
+          if (plainLyrics != null && plainLyrics.toString().trim().isNotEmpty) {
+            return plainLyrics;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("⚠️ LRCLIB falló: $e");
+    }
+
+    // ✨ PLAN B: Genius (Solo texto plano estático)
     try {
       final token = dotenv.env['GENIUS_TOKEN'];
       if (token != null && token.isNotEmpty) {
-        // 1. Buscar la canción en la API de Genius
         final query = Uri.encodeComponent('$title $artist');
         final searchUrl = Uri.parse("https://api.genius.com/search?q=$query");
 
@@ -40,11 +77,9 @@ class LyricsEngine {
       debugPrint("Error buscando letra en Genius: $e");
     }
 
-    // ✨ PLAN B: Si Genius falló, no tiene token o la estructura web cambió
-    debugPrint(
-      "⚠️ Genius falló o no encontró la letra. Usando Plan B (lyrics.ovh)...",
-    );
-    return await _fetchFallbackLyrics(title, artist);
+    // ✨ PLAN C: Si Genius falló, usamos lyrics.ovh
+    debugPrint("⚠️ Genius también falló. Usando Plan C (lyrics.ovh)...");
+    return await _fetchFallbackLyrics(cleanTitle, cleanArtist);
   }
 
   // Scraper interno porque la API de Genius no devuelve la letra directamente
@@ -74,19 +109,12 @@ class LyricsEngine {
     return null; // Retorna null para que el Plan B entre en acción
   }
 
-  // ✨ NUEVO: Plan B usando la API pública gratuita de lyrics.ovh
+  // ✨ PLAN C usando la API pública gratuita de lyrics.ovh
   static Future<String> _fetchFallbackLyrics(
-    String title,
-    String artist,
+    String cleanTitle,
+    String cleanArtist,
   ) async {
     try {
-      // Limpiamos el título y artista de textos extraños como "(feat. X)" o "[Remix]"
-      final cleanTitle = title
-          .replaceAll(RegExp(r'\(.*\)'), '')
-          .replaceAll(RegExp(r'\[.*\]'), '')
-          .trim();
-      final cleanArtist = artist.replaceAll(RegExp(r'\(.*\)'), '').trim();
-
       final url = Uri.parse(
         "https://api.lyrics.ovh/v1/$cleanArtist/$cleanTitle",
       );

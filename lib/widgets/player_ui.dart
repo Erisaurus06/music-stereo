@@ -20,6 +20,7 @@ import '../services/network_radar.dart';
 import 'design_components.dart';
 import 'package:perfect_volume_control/perfect_volume_control.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'bluetooth_panel.dart';
 
 // --- 7. REPRODUCTOR GIGANTE (UX MEJORADO: CRISTAL Y CONTRASTE DINÁMICO) ---
 class FullPlayerModal extends StatelessWidget {
@@ -1223,12 +1224,7 @@ class FloatingMiniPlayer extends StatelessWidget {
                                 AnimatedPress(
                                   onTap: () {
                                     HapticFeedback.lightImpact();
-                                    showModalBottomSheet(
-                                      context: context,
-                                      backgroundColor: Colors.transparent,
-                                      builder: (context) =>
-                                          const AudioRouteSheet(),
-                                    );
+                                    BluetoothPanel.show(context);
                                   },
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
