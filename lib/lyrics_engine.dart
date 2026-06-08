@@ -11,17 +11,30 @@ class LyricsEngine {
         .replaceAll(RegExp(r'\(.*\)'), '')
         .replaceAll(RegExp(r'\[.*\]'), '')
         .trim();
-    final cleanArtist = artist.replaceAll(RegExp(r'\(.*\)'), '').trim();
+    String cleanArtist = artist.replaceAll(RegExp(r'\(.*\)'), '').trim();
+
+    // ✨ SOLUCIÓN 1: Evitar buscar a la banda "Desconocido"
+    if (cleanArtist.toLowerCase().contains("desconocido") ||
+        cleanArtist.toLowerCase().contains("unknown")) {
+      cleanArtist = "";
+    }
 
     // ✨ PLAN A: LRCLIB (El único que proporciona letras SINCRONIZADAS para animar)
     try {
       debugPrint("Buscando letra sincronizada en LRCLIB para: $cleanTitle");
       final lrclibUrl = Uri.parse(
-        "https://lrclib.net/api/search?q=${Uri.encodeComponent('$cleanTitle $cleanArtist')}",
+        "https://lrclib.net/api/search?q=${Uri.encodeComponent('$cleanTitle $cleanArtist'.trim())}",
       );
 
+      // ✨ SOLUCIÓN 2: Añadir User-Agent obligatorio para que LRCLIB no bloquee la conexión
       final response = await http
-          .get(lrclibUrl)
+          .get(
+            lrclibUrl,
+            headers: {
+              'User-Agent':
+                  'TecConnection_MusicApp/1.0.0 (https://github.com/tuusuario)',
+            },
+          )
           .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {

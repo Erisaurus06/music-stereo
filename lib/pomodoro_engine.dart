@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Para la vibración
 import 'package:supabase_flutter/supabase_flutter.dart'; // Para la base de datos
@@ -21,6 +22,8 @@ class PomodoroEngine {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
+  static DateTime? _targetTime; // ✨ Memoria del reloj absoluto
+
   static Future<void> initNotifications() async {
     // Configuramos el icono de la notificación (usa el por defecto de Android)
     const AndroidInitializationSettings initializationSettingsAndroid =
@@ -37,6 +40,15 @@ class PomodoroEngine {
           iOS: initializationSettingsIOS,
         );
     await _notificationsPlugin.initialize(initializationSettings);
+
+    // ✨ SOLUCIÓN 1: Pedir permisos explícitos en Android 13+ para notificaciones locales
+    if (Platform.isAndroid) {
+      await _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.requestNotificationsPermission();
+    }
   }
 
   // ✨ NUEVO: Método para que puedas cambiar los tiempos desde tu pantalla de Configuración
@@ -54,12 +66,21 @@ class PomodoroEngine {
       secondsRemaining.value = focusDurationInSeconds;
     }
 
+    // ✨ Calculamos la HORA EXACTA en la que debe terminar
+    _targetTime = DateTime.now().add(Duration(seconds: secondsRemaining.value));
+
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (secondsRemaining.value > 0) {
-        secondsRemaining.value--;
-      } else {
-        _switchPhase();
+      if (_targetTime != null) {
+        final now = DateTime.now();
+        final diff = _targetTime!.difference(now).inSeconds;
+
+        if (diff > 0) {
+          secondsRemaining.value = diff;
+        } else {
+          _timer?.cancel();
+          _switchPhase(); // El tiempo se acabó, disparamos notificación
+        }
       }
     });
   }
@@ -108,7 +129,7 @@ class PomodoroEngine {
   static Future<void> _showPushNotification(String title, String body) async {
     const AndroidNotificationDetails
     androidDetails = AndroidNotificationDetails(
-      'pomodoro_channel_v3', // ✨ Se actualiza el ID para forzar el reinicio de los permisos
+      'pomodoro_channel_v5', // ✨ Forzamos un canal nuevo y limpio
       'Alertas de Sesión',
       channelDescription:
           'Notificaciones cuando inicia o termina el estudio/descanso',
@@ -116,24 +137,30 @@ class PomodoroEngine {
       priority: Priority.high,
       icon: '@mipmap/ic_launcher',
       enableVibration: true,
-      fullScreenIntent:
-          true, // ✨ Fuerza a que aparezca por encima de otras apps (Heads-up)
       visibility: NotificationVisibility.public,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound('tono_pomodoro'),
+      // ✨ SOLUCIÓN 2 y 3: Quitamos el sonido personalizado y fullScreenIntent que bloqueaban la notificación si fallaban
     );
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      sound: 'tono_pomodoro.mp3',
-    ); // ✨ En iOS SÍ lleva la extensión
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
     const NotificationDetails platformDetails = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
-    await _notificationsPlugin.show(0, title, body, platformDetails);
+
+    // ✨ SOLUCIÓN 4: Generamos un ID único para que la notificación SIEMPRE salte arriba y no se agrupe en silencio
+    final int uniqueId = DateTime.now().millisecondsSinceEpoch.remainder(
+      100000,
+    );
+    await _notificationsPlugin.show(uniqueId, title, body, platformDetails);
   }
 
   static void stopTimer() {
     _timer?.cancel();
+    _targetTime = null; // Limpiamos la memoria
     currentState.value = PomodoroState.idle;
     secondsRemaining.value = focusDurationInSeconds;
   }

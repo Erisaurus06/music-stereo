@@ -49,7 +49,9 @@ class _LyricsViewState extends State<LyricsView> {
     final fetchedLyrics = await LyricsEngine.fetchLyrics(title, artist);
 
     // Expresión regular para detectar si el texto trae tiempos LRC [00:12.33]
-    _isSynced = fetchedLyrics.contains(RegExp(r'\[\d{2}:\d{2}\.\d{2,3}\]'));
+    _isSynced = fetchedLyrics.contains(
+      RegExp(r'\[\d{2}:\d{2}\.\d{1,3}\]'),
+    ); // ✨ Soporta cualquier formato de fracción LRC
 
     if (_isSynced) {
       // Cargamos el motor de karaoke de flutter_lyric

@@ -237,9 +237,18 @@ class PlayerManager {
           if (statuses[Permission.audio] != PermissionStatus.granted &&
               statuses[Permission.storage] != PermissionStatus.granted) {
             debugPrint(
-              "❌ Permisos denegados. No se puede escanear música local.",
+              "❌ Permisos denegados. Revisando si hay bloqueo permanente...",
             );
-            return; // Detenemos la carga si el usuario rechaza el acceso
+
+            // ✨ SOLUCIÓN: Si Android bloqueó la ventana, mandamos al usuario a Configuración
+            if (statuses[Permission.audio] ==
+                    PermissionStatus.permanentlyDenied ||
+                statuses[Permission.storage] ==
+                    PermissionStatus.permanentlyDenied) {
+              debugPrint("🔧 Abriendo ajustes de la App...");
+              await openAppSettings();
+            }
+            return;
           }
         }
       }
