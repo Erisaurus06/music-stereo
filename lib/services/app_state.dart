@@ -242,8 +242,6 @@ class DinobotTheme {
     builders: {
       TargetPlatform.android:
           ZoomPageTransitionsBuilder(), // Fluidez Pixel / Galaxy Ultra
-      TargetPlatform.iOS:
-          CupertinoPageTransitionsBuilder(), // Fluidez nativa iPhone Pro
     },
   );
 
