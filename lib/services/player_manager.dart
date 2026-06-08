@@ -253,10 +253,9 @@ class PlayerManager {
 
       songs = songs.where((song) {
         final dataStr = song.data.toLowerCase();
-        return dataStr.endsWith('.mp3') ||
-            dataStr.endsWith('.m4a') ||
-            dataStr.endsWith('.wav') ||
-            dataStr.endsWith('.ogg');
+        return dataStr.endsWith(
+          '.mp3',
+        ); // ✨ Solo acepta formato .mp3 como solicitaste
       }).toList();
 
       allLocalSongs.value = songs;

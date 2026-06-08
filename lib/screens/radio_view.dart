@@ -58,17 +58,10 @@ class _RadioViewState extends State<RadioView>
     final theme = Theme.of(context);
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    // ✨ Lógica para adaptar el diseño a 3 botones o línea de gestos
-    double listBottomSpace = 150.0; // Espacio base para tu reproductor flotante
-    if (bottomPadding > 35) {
-      debugPrint("📱 Navegación: 3 Botones ($bottomPadding px)");
-      listBottomSpace += 20; // Espacio extra para que no choque con los botones
-    } else if (bottomPadding > 0) {
-      debugPrint("➖ Navegación: Línea de gestos ($bottomPadding px)");
-      listBottomSpace += bottomPadding + 10; // Espacio extra para la línea
-    } else {
-      debugPrint("🔳 Navegación: Oculta o inexistente");
-    }
+    // ✨ Lógica de espaciado dinámica e infalible (Estilo iOS)
+    // Deja espacio para el minireproductor (120px aprox) más el margen real del sistema.
+    final double listBottomSpace =
+        120.0 + (bottomPadding > 0 ? bottomPadding : 20.0);
 
     return SafeArea(
       bottom:

@@ -108,15 +108,19 @@ class PomodoroEngine {
   static Future<void> _showPushNotification(String title, String body) async {
     const AndroidNotificationDetails
     androidDetails = AndroidNotificationDetails(
-      'pomodoro_channel_v2', // ✨ IMPORTANTE: Cambiar el ID del canal para registrar el nuevo sonido
-      'Alertas Pomodoro',
-      channelDescription: 'Notificaciones del temporizador Pomodoro',
+      'pomodoro_channel_v3', // ✨ Se actualiza el ID para forzar el reinicio de los permisos
+      'Alertas de Sesión',
+      channelDescription:
+          'Notificaciones cuando inicia o termina el estudio/descanso',
       importance: Importance.max,
       priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+      enableVibration: true,
+      fullScreenIntent:
+          true, // ✨ Fuerza a que aparezca por encima de otras apps (Heads-up)
+      visibility: NotificationVisibility.public,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound(
-        'tono_pomodoro',
-      ), // ✨ Nombre del archivo SIN extensión
+      sound: RawResourceAndroidNotificationSound('tono_pomodoro'),
     );
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
       sound: 'tono_pomodoro.mp3',

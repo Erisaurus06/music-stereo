@@ -153,7 +153,9 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
 
             ConstrainedBox(
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.35,
+                maxHeight:
+                    MediaQuery.of(context).size.height *
+                    0.40, // ✨ Ligeramente más amplio para evitar desbordes
               ),
               child: _buscando
                   ? const Padding(
