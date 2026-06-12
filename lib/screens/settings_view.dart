@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:music_stereo/widgets/design_components.dart';
-import 'package:spotify_sdk/spotify_sdk.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io';
 
 // Importaciones de tu proyecto
-import '../api_keys.dart';
 import '../services/player_manager.dart';
 import '../services/app_state.dart';
 import '../models/app_models.dart';
@@ -25,52 +23,6 @@ class SettingsProView extends StatefulWidget {
 }
 
 class _SettingsProViewState extends State<SettingsProView> {
-  bool _isLoadingSpotify = false;
-
-  Future<void> _connectToSpotify() async {
-    setState(() => _isLoadingSpotify = true);
-    try {
-      String token = await SpotifySdk.getAccessToken(
-        clientId: dotenv.env['SPOTIFY_CLIENT_ID']!,
-        redirectUrl: "tecconnection://callback",
-        scope:
-            "app-remote-control, user-modify-playback-state, playlist-read-private",
-      );
-      bool result = await SpotifySdk.connectToSpotifyRemote(
-        clientId: ApiKeys.spotifyClientId,
-        redirectUrl: "tecconnection://callback",
-        accessToken: token,
-      );
-      if (result) {
-        PlayerManager.isSpotifyLinked.value = true;
-        PlayerManager.startSpotifyRadar();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                "✅ Vinculado a Spotify Premium",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("❌ Error: $e"),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoadingSpotify = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -505,67 +457,6 @@ class _SettingsProViewState extends State<SettingsProView> {
           ),
           const SizedBox(height: 20),
 
-          // --- BLOQUE 3: SISTEMA Y CONEXIONES ---
-          _buildConfigCard(
-            context,
-            title: "Servicios de Streaming",
-            children: [
-              ValueListenableBuilder<bool>(
-                valueListenable: PlayerManager.isSpotifyLinked,
-                builder: (context, isLinked, _) => ListTile(
-                  leading: const Icon(
-                    Icons.settings_input_antenna_rounded,
-                    color: Colors.green,
-                    size: 28,
-                  ),
-                  title: const Text(
-                    "Spotify Premium",
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  trailing: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isLinked
-                          ? Colors.transparent
-                          : Colors.green.withOpacity(0.15),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    onPressed: isLinked ? null : _connectToSpotify,
-                    child: Text(
-                      isLinked ? "CONECTADO" : "VINCULAR",
-                      style: const TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const Divider(height: 1, color: Colors.white10),
-              _buildUpcomingService(
-                context,
-                "Apple Music",
-                Colors.pinkAccent,
-                Icons.apple,
-              ),
-              _buildUpcomingService(
-                context,
-                "Amazon Music",
-                Colors.orange,
-                Icons.library_music_rounded,
-              ),
-              _buildUpcomingService(
-                context,
-                "YouTube Music",
-                Colors.red,
-                Icons.play_circle_fill_rounded,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
           // --- BLOQUE 3.5: BLUETOOTH Y DISPOSITIVOS ---
           _buildConfigCard(
             context,
@@ -644,45 +535,6 @@ class _SettingsProViewState extends State<SettingsProView> {
           ),
           const SizedBox(height: 150),
         ],
-      ),
-    );
-  }
-
-  Widget _buildUpcomingService(
-    BuildContext context,
-    String name,
-    Color color,
-    IconData icon,
-  ) {
-    return ListTile(
-      leading: Icon(icon, color: color.withOpacity(0.5), size: 28),
-      title: Text(
-        name,
-        style: const TextStyle(
-          color: Colors.white38,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      trailing: TextButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "🚀 $name estará disponible en la versión 2.0",
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              backgroundColor: DinobotTheme.primaryBlue,
-            ),
-          );
-        },
-        child: const Text(
-          "PRÓXIMAMENTE",
-          style: TextStyle(
-            color: Colors.white24,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
       ),
     );
   }

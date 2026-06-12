@@ -5,13 +5,9 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import 'package:palette_generator/palette_generator.dart';
-import 'package:spotify_sdk/spotify_sdk.dart';
-import 'package:spotify_sdk/models/image_uri.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -22,10 +18,9 @@ import 'app_state.dart';
 import '../artwork_engine.dart';
 import 'equalizer_manager.dart';
 import 'recording_manager.dart';
-import 'spotify_manager.dart';
 
 // --- EL DIRECTOR DE RÍOS (ESTADO ESTRICTO) ---
-enum AudioEngineType { local, spotify, radio, none }
+enum AudioEngineType { local, radio, none }
 
 class PlayerManager {
   // 💡 FACADE: Exponemos propiedades de los submódulos para no romper la UI de tus vistas
@@ -33,14 +28,10 @@ class PlayerManager {
   static AndroidLoudnessEnhancer get loudnessEnhancer =>
       EqualizerManager.loudnessEnhancer;
   static ValueNotifier<bool> get isRecording => RecordingManager.isRecording;
-  static ValueNotifier<bool> get isSpotifyLinked =>
-      SpotifyManager.isSpotifyLinked;
 
   static Future<void> startRecording() => RecordingManager.startRecording();
   static Future<void> stopRecording(BuildContext? context) =>
       RecordingManager.stopRecording(context);
-  static Future<void> connectToSpotify() => SpotifyManager.connectToSpotify();
-  static void startSpotifyRadar() => SpotifyManager.startSpotifyRadar();
 
   static final AudioPlayer player = AudioPlayer(
     audioPipeline: AudioPipeline(
@@ -278,48 +269,15 @@ class PlayerManager {
 
   static Future<void> _updateDominantColorLocal(SongModel song) async {
     updateThemeColor(const Color(0xFF2563EB)); // ✨ Azul si no hay portada local
-    try {
-      Uint8List? artwork = await audioQuery.queryArtwork(
-        song.id,
-        ArtworkType.AUDIO,
-      );
-      if (artwork != null) {
-        final palette = await PaletteGenerator.fromImageProvider(
-          MemoryImage(artwork),
-        );
-        updateThemeColor(
-          palette.dominantColor?.color ??
-              palette.vibrantColor?.color ??
-              const Color(0xFF2563EB),
-        );
-        return;
-      }
-      String? url = await ArtworkEngine.buscarPortada(
-        song.title,
-        song.artist ?? "",
-      );
-      if (url != null) {
-        final palette = await PaletteGenerator.fromImageProvider(
-          NetworkImage(url),
-        );
-        updateThemeColor(
-          palette.dominantColor?.color ??
-              palette.vibrantColor?.color ??
-              const Color(0xFF2563EB),
-        );
-      }
-    } catch (e) {
-      debugPrint("Error color: $e");
-    }
+
+    // 🍂 VERSIÓN LITE: Eliminamos el uso de PaletteGenerator.
+    // Leer píxeles consume mucha memoria RAM en dispositivos de gama baja.
+    // La app mantendrá su color estático base y las transiciones serán instantáneas.
   }
 
   static void toggleShuffle() {
-    if (activeEngine.value == AudioEngineType.spotify) {
-      SpotifySdk.toggleShuffle();
-    } else {
-      isShuffle.value = !isShuffle.value;
-      _updateQueue();
-    }
+    isShuffle.value = !isShuffle.value;
+    _updateQueue();
   }
 
   static Future<void> _crossfade(
@@ -374,17 +332,6 @@ class PlayerManager {
       await player.stop();
       await player.setVolume(1.0);
 
-      SpotifyManager.spotifyTimer?.cancel();
-      if (SpotifyManager.isSpotifyLinked.value) {
-        try {
-          await SpotifySdk.pause();
-        } catch (e) {
-          debugPrint(
-            "⚠️ No se pudo pausar Spotify previo a reproducir local: $e",
-          );
-        }
-      }
-
       currentSong.value = song;
       currentTitle.value = song.title;
       currentArtist.value = song.artist ?? "Desconocido";
@@ -416,15 +363,7 @@ class PlayerManager {
   static Future<void> togglePlay() async {
     HapticFeedback.lightImpact();
     try {
-      if (activeEngine.value == AudioEngineType.spotify) {
-        if (isPlaying.value) {
-          isPlaying.value = false;
-          await SpotifySdk.pause();
-        } else {
-          isPlaying.value = true;
-          await SpotifySdk.resume();
-        }
-      } else if (activeEngine.value == AudioEngineType.radio) {
+      if (activeEngine.value == AudioEngineType.radio) {
         if (player.playing) {
           isPlaying.value = false;
           await player.pause();
@@ -462,38 +401,12 @@ class PlayerManager {
       await player.stop();
       await player.setVolume(1.0);
 
-      SpotifyManager.spotifyTimer?.cancel();
-      if (SpotifyManager.isSpotifyLinked.value) {
-        try {
-          await SpotifySdk.pause();
-        } catch (e) {
-          debugPrint(
-            "⚠️ No se pudo pausar Spotify previo a reproducir radio: $e",
-          );
-        }
-      }
-
       currentTitle.value = station.name;
       currentArtist.value = "EN VIVO • ${station.country.toUpperCase()}";
       currentArtwork.value = station.favicon;
 
-      if (station.favicon.isNotEmpty) {
-        try {
-          final palette = await PaletteGenerator.fromImageProvider(
-            NetworkImage(station.favicon),
-          );
-          updateThemeColor(
-            palette.dominantColor?.color ??
-                palette.vibrantColor?.color ??
-                const Color(0xFF2563EB),
-          );
-        } catch (e) {
-          debugPrint("⚠️ Error generando paleta para la Radio: $e");
-          updateThemeColor(const Color(0xFF2563EB));
-        }
-      } else {
-        updateThemeColor(const Color(0xFF2563EB));
-      }
+      // 🍂 VERSIÓN LITE: Evitamos procesar la paleta de la imagen de la emisora.
+      updateThemeColor(const Color(0xFF2563EB));
 
       final audioSource = AudioSource.uri(
         Uri.parse(station.url),
@@ -570,52 +483,31 @@ class PlayerManager {
   }
 
   static Future<void> playNext() async {
-    if (AppState.mixedPlayback.value) {
-      bool switchRiver = Random().nextBool();
-      if (switchRiver && SpotifyManager.isSpotifyLinked.value) {
-        activeEngine.value = AudioEngineType.spotify;
-        SpotifySdk.skipNext();
-        return;
-      }
-    }
-    if (activeEngine.value == AudioEngineType.spotify) {
-      SpotifySdk.skipNext();
-    } else {
-      if (currentSong.value == null || playbackQueue.isEmpty) return;
+    if (currentSong.value == null || playbackQueue.isEmpty) return;
 
-      int currentIndex = playbackQueue.indexWhere(
-        (s) => s.id == currentSong.value!.id,
-      );
-      if (currentIndex < playbackQueue.length - 1) {
-        playSong(playbackQueue[currentIndex + 1]);
-      } else if (repeatMode.value == 1) {
-        playSong(playbackQueue.first);
-      }
+    int currentIndex = playbackQueue.indexWhere(
+      (s) => s.id == currentSong.value!.id,
+    );
+    if (currentIndex < playbackQueue.length - 1) {
+      playSong(playbackQueue[currentIndex + 1]);
+    } else if (repeatMode.value == 1) {
+      playSong(playbackQueue.first);
     }
   }
 
   static Future<void> playPrevious() async {
-    if (activeEngine.value == AudioEngineType.spotify) {
-      SpotifySdk.skipPrevious();
-    } else {
-      if (currentSong.value == null || playbackQueue.isEmpty) return;
-      if (position.value.inSeconds > 3) {
-        seek(Duration.zero);
-        return;
-      }
-      int currentIndex = playbackQueue.indexWhere(
-        (s) => s.id == currentSong.value!.id,
-      );
-      if (currentIndex > 0) playSong(playbackQueue[currentIndex - 1]);
+    if (currentSong.value == null || playbackQueue.isEmpty) return;
+    if (position.value.inSeconds > 3) {
+      seek(Duration.zero);
+      return;
     }
+    int currentIndex = playbackQueue.indexWhere(
+      (s) => s.id == currentSong.value!.id,
+    );
+    if (currentIndex > 0) playSong(playbackQueue[currentIndex - 1]);
   }
 
   static void seek(Duration d) {
-    if (activeEngine.value == AudioEngineType.spotify) {
-      SpotifySdk.seekTo(positionedMilliseconds: d.inMilliseconds);
-      position.value = d;
-    } else {
-      player.seek(d);
-    }
+    player.seek(d);
   }
 }
