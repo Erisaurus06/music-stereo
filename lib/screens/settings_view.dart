@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:music_stereo/widgets/design_components.dart';
 import 'package:spotify_sdk/spotify_sdk.dart';
@@ -27,6 +28,81 @@ class SettingsProView extends StatefulWidget {
 class _SettingsProViewState extends State<SettingsProView> {
   bool _isLoadingSpotify = false;
 
+  // ✨ ALERTA NATIVA DE iOS (Reemplaza los Snackbars de Android)
+  void _showIOSAlert(String title, String message) {
+    if (!mounted) return;
+    showCupertinoDialog(
+      context: context,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: const Text("OK"),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✨ SELECTOR NATIVO DE iOS (Reemplaza los Dropdowns de Android)
+  void _showPicker({
+    required List<String> items,
+    required int initialIndex,
+    required ValueChanged<int> onSelectedItemChanged,
+  }) {
+    final theme = Theme.of(context);
+    showCupertinoModalPopup(
+      context: context,
+      builder: (_) => Container(
+        height: 250,
+        color: theme.scaffoldBackgroundColor,
+        child: Column(
+          children: [
+            Container(
+              color: theme.cardColor,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  CupertinoButton(
+                    child: const Text(
+                      'Listo',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: CupertinoPicker(
+                itemExtent: 32.0,
+                scrollController: FixedExtentScrollController(
+                  initialItem: initialIndex,
+                ),
+                onSelectedItemChanged: onSelectedItemChanged,
+                children: items
+                    .map(
+                      (e) => Center(
+                        child: Text(
+                          e,
+                          style: TextStyle(
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _connectToSpotify() async {
     setState(() => _isLoadingSpotify = true);
     try {
@@ -44,28 +120,10 @@ class _SettingsProViewState extends State<SettingsProView> {
       if (result) {
         PlayerManager.isSpotifyLinked.value = true;
         PlayerManager.startSpotifyRadar();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                "✅ Vinculado a Spotify Premium",
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
+        _showIOSAlert("Vinculado", "✅ Conectado a Spotify Premium con éxito.");
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("❌ Error: $e"),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
+      _showIOSAlert("Error de Vinculación", "❌ Ocurrió un error: $e");
     } finally {
       if (mounted) setState(() => _isLoadingSpotify = false);
     }
@@ -80,12 +138,12 @@ class _SettingsProViewState extends State<SettingsProView> {
         physics: const BouncingScrollPhysics(),
         children: [
           Text(
-            "Configuración",
+            "Ajustes",
             style: TextStyle(
               fontSize: 34,
-              fontWeight: FontWeight.w900,
+              fontWeight: FontWeight.w700, // ✨ Tipografía SF Pro original
               color: theme.textTheme.bodyLarge?.color,
-              letterSpacing: -0.5,
+              letterSpacing: 0.41,
             ),
           ),
           const SizedBox(height: 25),
@@ -94,48 +152,55 @@ class _SettingsProViewState extends State<SettingsProView> {
             context,
             title: "Apariencia del Sistema",
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                child: ValueListenableBuilder<ThemeMode>(
-                  valueListenable: AppState.themeMode,
-                  builder: (context, mode, _) =>
-                      DropdownButtonFormField<ThemeMode>(
-                        value: mode,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          labelText: "Modo de Color",
-                          labelStyle: TextStyle(color: Colors.grey),
-                        ),
-                        dropdownColor: theme.cardColor,
-                        style: TextStyle(
-                          color: theme.textTheme.bodyLarge?.color,
-                          fontWeight: FontWeight.bold,
+              ValueListenableBuilder<ThemeMode>(
+                valueListenable: AppState.themeMode,
+                builder: (context, mode, _) => ListTile(
+                  title: Text(
+                    "Modo de Color",
+                    style: TextStyle(
+                      color: theme.textTheme.bodyLarge?.color,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 16,
+                    ),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        mode == ThemeMode.system
+                            ? "Automático"
+                            : (mode == ThemeMode.dark ? "Oscuro" : "Claro"),
+                        style: const TextStyle(
+                          color: Colors.grey,
                           fontSize: 16,
                         ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: ThemeMode.system,
-                            child: Text("Automático (Teléfono)"),
-                          ),
-                          DropdownMenuItem(
-                            value: ThemeMode.dark,
-                            child: Text("Modo Oscuro"),
-                          ),
-                          DropdownMenuItem(
-                            value: ThemeMode.light,
-                            child: Text("Modo Claro"),
-                          ),
-                        ],
-                        onChanged: (v) {
-                          AppState.setTheme(v!);
-                          if (AppState.enableHaptics.value) {
-                            HapticFeedback.selectionClick();
-                          }
-                        },
                       ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        CupertinoIcons.chevron_forward,
+                        color: Colors.grey,
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                  onTap: () {
+                    final items = ["Automático", "Modo Oscuro", "Modo Claro"];
+                    final values = [
+                      ThemeMode.system,
+                      ThemeMode.dark,
+                      ThemeMode.light,
+                    ];
+                    int initialIndex = values.indexOf(mode);
+                    _showPicker(
+                      items: items,
+                      initialIndex: initialIndex,
+                      onSelectedItemChanged: (idx) {
+                        AppState.setTheme(values[idx]);
+                        if (AppState.enableHaptics.value)
+                          HapticFeedback.selectionClick();
+                      },
+                    );
+                  },
                 ),
               ),
             ],
@@ -202,7 +267,7 @@ class _SettingsProViewState extends State<SettingsProView> {
               const Divider(height: 1, color: Colors.white10),
               ValueListenableBuilder<bool>(
                 valueListenable: AppState.enableHaptics,
-                builder: (context, haptics, _) => SwitchListTile(
+                builder: (context, haptics, _) => ListTile(
                   title: Text(
                     "Vibración Háptica",
                     style: TextStyle(
@@ -215,18 +280,20 @@ class _SettingsProViewState extends State<SettingsProView> {
                     "Respuestas táctiles al tocar botones",
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
-                  activeColor: theme.primaryColor,
-                  value: haptics,
-                  onChanged: (v) {
-                    AppState.setHaptics(v);
-                    if (v) HapticFeedback.heavyImpact();
-                  },
+                  trailing: CupertinoSwitch(
+                    activeColor: theme.primaryColor,
+                    value: haptics,
+                    onChanged: (v) {
+                      AppState.setHaptics(v);
+                      if (v) HapticFeedback.heavyImpact();
+                    },
+                  ),
                 ),
               ),
               const Divider(height: 1, color: Colors.white10),
               ValueListenableBuilder<bool>(
                 valueListenable: AppState.highFidelityAnimations,
-                builder: (context, anims, _) => SwitchListTile(
+                builder: (context, anims, _) => ListTile(
                   title: Text(
                     "Animaciones de Alta Fidelidad",
                     style: TextStyle(
@@ -239,14 +306,16 @@ class _SettingsProViewState extends State<SettingsProView> {
                     "Apágalo para ahorrar batería",
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
-                  activeColor: theme.primaryColor,
-                  value: anims,
-                  onChanged: (v) {
-                    AppState.setAnimations(v);
-                    if (AppState.enableHaptics.value) {
-                      HapticFeedback.lightImpact();
-                    }
-                  },
+                  trailing: CupertinoSwitch(
+                    activeColor: theme.primaryColor,
+                    value: anims,
+                    onChanged: (v) {
+                      AppState.setAnimations(v);
+                      if (AppState.enableHaptics.value) {
+                        HapticFeedback.lightImpact();
+                      }
+                    },
+                  ),
                 ),
               ),
             ],
@@ -281,11 +350,9 @@ class _SettingsProViewState extends State<SettingsProView> {
                 // Guardamos la imagen en el cerebro de la app
                 AppState.backgroundImagePath.value = newImage.path;
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("🌌 Fondo espacial activado"),
-                    backgroundColor: theme.primaryColor,
-                  ),
+                _showIOSAlert(
+                  "Fondo Actualizado",
+                  "🌌 Fondo espacial activado correctamente.",
                 );
               }
             },
@@ -365,14 +432,6 @@ class _SettingsProViewState extends State<SettingsProView> {
           GestureDetector(
             onTap: () async {
               HapticFeedback.selectionClick();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text(
-                    "☁️ Buscando fondo estético en la nube...",
-                  ),
-                  backgroundColor: theme.primaryColor,
-                ),
-              );
               try {
                 // Genera un fondo aleatorio con desenfoque elegante de Picsum
                 final url = Uri.parse("https://picsum.photos/800/1200/?blur=2");
@@ -390,24 +449,16 @@ class _SettingsProViewState extends State<SettingsProView> {
 
                   AppState.backgroundImagePath.value = newImage.path;
 
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text("🌌 Fondo estético activado"),
-                        backgroundColor: theme.primaryColor,
-                      ),
-                    );
-                  }
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("❌ Error al conectar con la API de fondos"),
-                      backgroundColor: Colors.redAccent,
-                    ),
+                  _showIOSAlert(
+                    "Fondo Actualizado",
+                    "🌌 Fondo estético descargado y activado.",
                   );
                 }
+              } catch (e) {
+                _showIOSAlert(
+                  "Error de Conexión",
+                  "❌ No se pudo descargar el fondo desde la nube.",
+                );
               }
             },
             child: Container(
@@ -665,14 +716,9 @@ class _SettingsProViewState extends State<SettingsProView> {
       ),
       trailing: TextButton(
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                "🚀 $name estará disponible en la versión 2.0",
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              backgroundColor: DinobotTheme.primaryBlue,
-            ),
+          _showIOSAlert(
+            "Próximamente",
+            "🚀 $name estará disponible en la próxima actualización (v2.0).",
           );
         },
         child: const Text(
@@ -697,21 +743,23 @@ class _SettingsProViewState extends State<SettingsProView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 15, bottom: 10),
+          padding: const EdgeInsets.only(left: 15, bottom: 6, top: 10),
           child: Text(
             title.toUpperCase(),
             style: TextStyle(
-              color: theme.textTheme.bodySmall?.color,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
-              fontSize: 12,
+              color: CupertinoColors.systemGrey, // ✨ Título gris nativo
+              fontWeight: FontWeight.w400,
+              letterSpacing: 0.5,
+              fontSize: 13,
             ),
           ),
         ),
         Container(
           decoration: BoxDecoration(
             color: theme.cardColor,
-            borderRadius: BorderRadius.circular(25),
+            borderRadius: BorderRadius.circular(
+              10,
+            ), // ✨ Curvatura oficial de celdas en iOS
           ),
           child: Column(children: children),
         ),
