@@ -17,6 +17,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'radio_engine.dart';
 import 'app_state.dart';
 import '../artwork_engine.dart';
@@ -114,6 +115,9 @@ class PlayerManager {
 
   static final ValueNotifier<bool> isShuffle = ValueNotifier(false);
   static final ValueNotifier<int> repeatMode = ValueNotifier(0);
+
+  static int _crossfadeToken =
+      0; // ✨ NUEVO: Token para evitar cruces de animaciones
 
   static void reorderQueue(int oldIndex, int newIndex) {
     if (newIndex > oldIndex) newIndex -= 1;
@@ -332,12 +336,17 @@ class PlayerManager {
       return;
     }
 
+    _crossfadeToken++; // Cancelamos cualquier animación anterior
+    final currentToken = _crossfadeToken;
+
     const steps =
         30; // ✨ Alta tasa de refresco (aprox 60 FPS) para que sea imperceptible
     final stepDuration = milliseconds ~/ steps;
 
     if (isFadingOut) {
       for (int i = steps; i >= 0; i--) {
+        if (_crossfadeToken != currentToken)
+          return; // Abortar si otra animación inició
         // ✨ Curva Premium "Equal-Power" (Coseno) - Evita la caída brusca del volumen
         double progress = i / steps;
         double volume = cos((1.0 - progress) * (pi / 2));
@@ -350,6 +359,8 @@ class PlayerManager {
       }
     } else {
       for (int i = 0; i <= steps; i++) {
+        if (_crossfadeToken != currentToken)
+          return; // Abortar si otra animación inició
         // ✨ Curva Premium "Equal-Power" (Seno) - Entrada inmersiva
         double progress = i / steps;
         double volume = sin(progress * (pi / 2));
@@ -564,8 +575,14 @@ class PlayerManager {
           "⚠️ No se guardó en la nube: No hay un usuario logueado en esta sesión.",
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint("❌ Error guardando radio en Supabase: $e");
+      // ✨ Monitoreo remoto: Enviamos el error silencioso a Firebase
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stackTrace,
+        reason: 'Fallo al sincronizar radios favoritas en Supabase',
+      );
     }
   }
 

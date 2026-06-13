@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Para la vibración
 import 'package:supabase_flutter/supabase_flutter.dart'; // Para la base de datos
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 enum PomodoroState { focus, shortBreak, longBreak, idle }
@@ -18,6 +19,13 @@ class PomodoroEngine {
   static final ValueNotifier<PomodoroState> currentState = ValueNotifier(
     PomodoroState.idle,
   );
+  // ✨ NUEVO: Contador reactivo para los Pomodoros completados hoy
+  static final ValueNotifier<int> todaysPomodoros = ValueNotifier(0);
+  // ✨ NUEVO: Arreglo de 7 posiciones (Lunes a Domingo) para la semana actual
+  static final ValueNotifier<List<int>> weeklyPomodoros = ValueNotifier(
+    List.filled(7, 0),
+  );
+
   static Timer? _timer;
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -48,6 +56,68 @@ class PomodoroEngine {
             AndroidFlutterLocalNotificationsPlugin
           >()
           ?.requestNotificationsPermission();
+    }
+
+    // ✨ NUEVO: Cargar conteo del día al arrancar
+    await fetchTodaysPomodoros();
+    await fetchWeeklyPomodoros(); // ✨ Cargar también los de la semana
+  }
+
+  // ✨ NUEVO: Método que consulta a Supabase los registros de hoy
+  static Future<void> fetchTodaysPomodoros() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final now = DateTime.now();
+      final startOfDay = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).toIso8601String();
+
+      final response = await Supabase.instance.client
+          .from('estudio')
+          .select('id') // Pedimos solo la columna ID para que sea rapidísimo
+          .eq('user_id', userId)
+          .gte('fecha', startOfDay);
+
+      todaysPomodoros.value = List.from(response).length;
+    } catch (e) {
+      debugPrint("❌ Error obteniendo Pomodoros de hoy: $e");
+    }
+  }
+
+  // ✨ NUEVO: Consultar registros desde el Lunes de la semana actual
+  static Future<void> fetchWeeklyPomodoros() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final now = DateTime.now();
+      // Calcular el día Lunes de esta semana
+      final currentDay = now.weekday; // 1 = Lunes, 7 = Domingo
+      final startOfWeek = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(Duration(days: currentDay - 1));
+
+      final response = await Supabase.instance.client
+          .from('estudio')
+          .select('fecha')
+          .eq('user_id', userId)
+          .gte('fecha', startOfWeek.toIso8601String());
+
+      List<int> weekCounts = List.filled(7, 0); // L, M, M, J, V, S, D
+      for (var record in response) {
+        final date = DateTime.parse(record['fecha']).toLocal();
+        weekCounts[date.weekday - 1]++; // weekday es 1-7, el array es 0-6
+      }
+
+      weeklyPomodoros.value = weekCounts;
+    } catch (e) {
+      debugPrint("❌ Error obteniendo Pomodoros semanales: $e");
     }
   }
 
@@ -101,9 +171,21 @@ class PomodoroEngine {
             'fecha': DateTime.now().toIso8601String(),
           });
           debugPrint("✅ Sesión de estudio guardada en la nube");
+          todaysPomodoros.value += 1; // ✨ Actualiza la vista inmediatamente
+
+          // ✨ Actualiza el gráfico semanal inmediatamente
+          final updatedWeek = List<int>.from(weeklyPomodoros.value);
+          updatedWeek[DateTime.now().weekday - 1] += 1;
+          weeklyPomodoros.value = updatedWeek;
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
         debugPrint("❌ Error guardando estadística: $e");
+        // ✨ Monitoreo remoto: Registramos si la base de datos falla al guardar el Pomodoro
+        FirebaseCrashlytics.instance.recordError(
+          e,
+          stackTrace,
+          reason: 'Fallo al guardar sesión Pomodoro en Supabase',
+        );
       }
 
       currentState.value = PomodoroState.shortBreak;

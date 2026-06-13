@@ -96,7 +96,9 @@ class _RadioViewState extends State<RadioView>
                 child: Container(
                   decoration: BoxDecoration(
                     color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(
+                      12,
+                    ), // ✨ iOS: Bordes más sutiles para barras de búsqueda
                     border: Border.all(color: Colors.white.withOpacity(0.05)),
                   ),
                   child: TextField(
@@ -156,6 +158,10 @@ class _RadioViewState extends State<RadioView>
                 unselectedLabelColor: Colors.grey,
                 indicatorWeight: 3,
                 dividerColor: Colors.transparent,
+                splashFactory: InkSparkle
+                    .splashFactory, // ✨ Android 13+: Animación de agua (Ripple moderno)
+                indicatorSize: TabBarIndicatorSize
+                    .label, // ✨ iOS: Indicador corto y elegante
                 tabs: const [
                   Tab(text: "EXPLORAR"),
                   Tab(text: "FAVORITAS"),
@@ -193,7 +199,9 @@ class _RadioViewState extends State<RadioView>
     required double bottomSpace,
   }) {
     if (_isLoading && !isFavoritesTab) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator.adaptive(),
+      ); // ✨ Híbrido: Rueda en iOS, Spinner en Android
     }
 
     // ✨ MAGIA: Ahora escuchamos la memoria real de PlayerManager, no un filtro temporal
@@ -277,12 +285,16 @@ class _RadioViewState extends State<RadioView>
       margin: isGrid ? EdgeInsets.zero : const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24), // ✨ Bordes premium
+        borderRadius: BorderRadius.circular(
+          20,
+        ), // ✨ iOS: Bordes "Super Ellipse"
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(
+              0.06,
+            ), // ✨ iOS: Sombra más amplia y difusa
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
         border: Border.all(
@@ -293,10 +305,12 @@ class _RadioViewState extends State<RadioView>
       ),
       child: Material(
         color: Colors.transparent, // Permite ver el fondo de la tarjeta
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         child: InkWell(
           // ✨ Animación nativa fluida al tocar
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
+          splashFactory: InkSparkle
+              .splashFactory, // ✨ Android 13+: Respuesta táctil inmersiva y cristalina
           onTap: () {
             HapticFeedback.selectionClick();
             PlayerManager.playRadio(radio);
