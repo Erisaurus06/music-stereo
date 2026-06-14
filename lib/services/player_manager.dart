@@ -60,7 +60,7 @@ class PlayerManager {
   static final ValueNotifier<SongModel?> currentSong = ValueNotifier(null);
 
   static final ValueNotifier<String> currentTitle = ValueNotifier(
-    "TecConnection",
+    "Music Stereo",
   );
   static final ValueNotifier<String> currentArtist = ValueNotifier(
     "Dinobot Engine",
@@ -71,6 +71,9 @@ class PlayerManager {
     const Color(0xFF2563EB), // ✨ Azul por defecto en lugar de Verde Spotify
   );
 
+  // ✨ NUEVO: Permitir al usuario forzar un color (Rojo, Morado, Verde, Rosa, Amarillo)
+  static final ValueNotifier<Color?> manualThemeColor = ValueNotifier(null);
+
   // ✨ NUEVO: Color dinámico para íconos y textos (Blanco o Negro) garantizando lectura
   static final ValueNotifier<Color> currentForegroundColor = ValueNotifier(
     Colors.white,
@@ -78,8 +81,10 @@ class PlayerManager {
 
   // ✨ NUEVO: Función inteligente para el Camaleón en dispositivos Pro/Ultra
   static void updateThemeColor(Color newColor) {
-    currentThemeColor.value = newColor;
-    final bool isDark = newColor.computeLuminance() < 0.5;
+    // Si el usuario eligió un color manual, ignoramos la portada
+    final Color finalColor = manualThemeColor.value ?? newColor;
+    currentThemeColor.value = finalColor;
+    final bool isDark = finalColor.computeLuminance() < 0.5;
     currentForegroundColor.value = isDark ? Colors.white : Colors.black;
 
     SystemChrome.setSystemUIOverlayStyle(
@@ -95,6 +100,22 @@ class PlayerManager {
             : Brightness.dark,
       ),
     );
+  }
+
+  // ✨ NUEVO: Función para cambiar el color manualmente desde la UI de ajustes
+  static void setManualThemeColor(Color? color) {
+    manualThemeColor.value = color;
+    if (color != null) {
+      updateThemeColor(color); // Aplica el color estático (Rojo, Morado, etc.)
+    } else {
+      // Si el usuario vuelve al modo "Camaleón" y hay canción, re-calculamos
+      if (currentSong.value != null &&
+          activeEngine.value == AudioEngineType.local) {
+        _updateDominantColorLocal(currentSong.value!);
+      } else {
+        updateThemeColor(const Color(0xFF2563EB));
+      }
+    }
   }
 
   static final ValueNotifier<bool> isPlaying = ValueNotifier(false);

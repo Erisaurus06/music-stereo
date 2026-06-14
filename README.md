@@ -1,77 +1,91 @@
-# TecConnection Hub (Music Stereo) 🎵
+# Music Stereo
 
-¡Bienvenido a **TecConnection Hub**! Una aplicación musical de vanguardia construida con Flutter que unifica tus archivos MP3 locales, emisoras de radio globales y tu cuenta de Spotify Premium en un solo ecosistema. Además, integra herramientas de productividad como un temporizador Pomodoro y visualización dinámica de letras de canciones (Karaoke sincronizado).
+¡Bienvenido a **Music Stereo**! Una aplicación musical hiper-personalizable de vanguardia construida con Flutter. 
+
+A diferencia de los reproductores convencionales, esta app unifica tus **archivos MP3 locales**, **emisoras de radio globales** y tu cuenta de **Spotify Premium** bajo una sola interfaz inmersiva. Además, trasciende el entretenimiento integrando un **Motor Pomodoro** para la productividad y un ecosistema de **Letras Dinámicas** (Karaoke sincronizado).
 
 ## 🌟 ¿De qué trata la App?
-TecConnection Hub no es solo un reproductor multimedia; funciona también como una estación de concentración para estudio/trabajo gracias a su **Pomodoro Engine**, y como centro de entretenimiento gracias a su motor de **Letras Dinámicas** obtenidas en tiempo real desde plataformas como LRCLIB y Genius. Su enfoque principal es brindar una experiencia de usuario (UX) inmersiva, elegante y altamente personalizable.
+Music Stereo está diseñada como una estación de concentración y entretenimiento absoluto. Su enfoque principal es brindar una **Experiencia de Usuario (UX) Premium** mediante un diseño *Edge-to-Edge* (sin bordes) que fluye por toda la pantalla de tu dispositivo. 
+
+Puedes estudiar escuchando radios Lo-Fi guardando tu progreso en la nube (Supabase), o cambiar a modo fiesta escuchando tus MP3 locales con las letras sincronizadas línea por línea al puro estilo de Apple Music.
+
+## ✨ Funcionalidades Únicas y UX Inmersivo
+El proyecto fue diseñado prestando atención maniática a la interacción humana:
+
+* 🎛️ **Crossfade de Alta Fidelidad (Curvas Equal-Power):** Al cambiar de una canción a otra, el motor usa cálculos trigonométricos (`Math.sin` y `Math.cos`) para hacer una transición donde el volumen cruza de manera impecable, simulando una mesa de mezclas profesional.
+* 🦎 **El Camaleón Visual:** Gracias a `palette_generator`, la interfaz entera (fondos, botones y barra de notificaciones) extrae los colores dominantes de la carátula actual y muta. Además, incluye un *Override* manual para que el usuario fuerce temas estáticos (Rojo, Morado, Verde, etc.).
+* 📱 **Notificaciones Nativas Enriquecidas:** El reproductor se ancla a la barra de estado de Android 13+ (`just_audio_background`) extrayendo la portada, cambiando el fondo dinámicamente y usando **Iconos Vectoriales (.xml)** diseñados a medida.
+* 🍅 **Pomodoro Cloud-Synced:** Un temporizador de productividad que interrumpe gentilmente con notificaciones push (alta prioridad) y guarda tus estadísticas de estudio en tiempo real en una base de datos de **Supabase**.
+* 📳 **Haptics Táctiles Premium:** Uso intensivo de `HapticFeedback` para simular la resistencia mecánica de botones reales al tocar controles o reordenar listas.
 
 ## ⚙️ ¿Cómo funciona?
 El núcleo de la aplicación recae sobre un gestor central de arquitectura limpia (`PlayerManager`) que permite intercalar de forma totalmente transparente entre diferentes "Motores" (Engines) de audio:
-1. **Motor Local (`AudioEngineType.local`):** Escanea automáticamente el almacenamiento de tu dispositivo buscando archivos `.mp3` y los reproduce en alta calidad.
-2. **Motor de Radio (`AudioEngineType.radio`):** Se conecta a APIs web y extrae miles de emisoras de radio alrededor del mundo, reproduciéndolas en directo.
-3. **Motor Spotify (`AudioEngineType.spotify`):** Vincula y controla de forma nativa la aplicación de Spotify instalada en tu teléfono.
-4. **Letras Sincronizadas (`LyricsEngine`):** Intercepta la canción actual y extrae el texto puro o las métricas de tiempo (`[00:12.33]`) para animar un Karaoke usando el widget de `flutter_lyric`.
+* 💾 **Motor Local (`AudioEngineType.local`):** Escanea automáticamente el almacenamiento buscando `.mp3`, leyendo etiquetas ID3 (`on_audio_query` / `audiotagger`).
+* 📻 **Motor de Radio (`AudioEngineType.radio`):** Consume APIs globales para miles de emisoras en directo. (¡Las favoritas se sincronizan en la nube!).
+* 🟢 **Motor Spotify (`AudioEngineType.spotify`):** Controla de forma nativa la app de Spotify por medio de Broadcast Intents.
+* 🎤 **Letras Dinámicas (`LyricsEngine`):** Intercepta la metadata actual y extrae fracciones de tiempo LRC (`[00:15.22]`) dibujando las letras sobre un lienzo de `flutter_lyric`.
 
-## 🛠️ Lenguaje y Tecnologías Principales
-* **Lenguaje Principal:** Dart
-* **Framework:** Flutter (Diseñado con UI Edge-to-Edge inmersiva para Android 15+)
-* **Backend & Nube:** 
-  * **Supabase:** Base de datos en la nube (guarda estadísticas del Pomodoro, sesiones de usuario y antenas de radio favoritas).
-  * **Firebase:** Servicios de Crashlytics para telemetría, Analytics y Mensajería Push (FCM).
+## 🛠️ Herramientas y Tecnologías Utilizadas
 
-## 📦 Librerías e Importaciones Clave
-La aplicación aprovecha las herramientas más profesionales del ecosistema de pub.dev:
+### Framework y Lenguaje
+* **Flutter SDK:** `^3.11.4` (Diseño Edge-to-Edge Android 15 ready).
+* **Dart:** `3.x`
 
-* **Audio y Media:**
-  * `just_audio` & `just_audio_background`: Reproducción sólida con notificaciones persistentes en la barra de estado y controles Bluetooth.
-  * `spotify_sdk`: Interfaz de comunicación con Spotify.
-  * `on_audio_query`: Motor profundo para explorar metadatos, álbumes y canciones del disco duro.
-* **Estado y Base de Datos:**
-  * `flutter_riverpod`: Manejo de estado reactivo (State Management).
-  * `supabase_flutter`: Cliente oficial de Supabase.
-  * `shared_preferences`: Memoria persistente para funcionamiento en modo avión (Offline).
-* **UI e Interfaz:**
-  * `flutter_lyric`: Motor gráfico que dibuja las letras en formato Netease.
-  * `palette_generator`: Algoritmo que lee los píxeles de una carátula y extrae sus colores predominantes.
-  * `blurrycontainer`: Efectos de cristal esmerilado (Glassmorphism).
-  * `interactive_slider` & `perfect_volume_control`: Manipulación customizada del reproductor y el sonido maestro del celular.
-* **Utilidades del Sistema:**
-  * `permission_handler`: Motor dinámico para solicitar permisos en Android 13+.
-  * `flutter_local_notifications` & `firebase_messaging`: Alertas enriquecidas con sonidos y prioridades "Max".
-  * `flutter_dotenv`: Ocultación y protección de API Keys (`.env`).
+### Backend & Cloud Services
+* **Supabase (`supabase_flutter`):** Base de datos PostgreSQL en tiempo real para respaldar perfiles, emisoras favoritas y telemetría del Pomodoro.
+* **Firebase (`firebase_core`, `crashlytics`, `messaging`):** Captura de errores fatales remotos y recepción de alertas Push.
 
-## ✨ Herramientas de Animación y UX Inmersivo
-El proyecto fue diseñado prestando atención maníaca a la interacción humana:
-* **Crossfade (Curvas Equal-Power):** Al cambiar de una canción local a otra, no hay cortes de sonido crudos. Se usa un sistema matemático (`Math.sin` y `Math.cos`) para subir una pista y bajar la otra imperceptiblemente creando transiciones dignas de estudio de grabación.
-* **Camaleón Visual:** A través de un `ValueListenableBuilder` global y la librería `palette_generator`, los colores de toda la interfaz, botones y los íconos de la barra de estado (blanco/negro) mutan dependiendo de la portada de la canción o de la emisora actual.
-* **Haptics Táctiles Premium:** Integración de la clase `HapticFeedback` nativa de Flutter, programada para detonar en cada interacción (heavy impact para Play/Pausa, light impact en botones), simulando la botonera de un estéreo real.
-* **Animaciones Explícitas a 60FPS:** Usa escuchadores (`ValueNotifier`) para evitar re-dibujados en todo el árbol de Widgets. Solo se mueven las piezas y barras necesarias con un coste de CPU extremadamente bajo.
+### Motores de Audio y Archivos
+* `just_audio` + `just_audio_background`: Manejo de búfer de audio, ecualización y servicio en segundo plano (Wake Locks).
+* `spotify_sdk`: Wrapper nativo para autenticación e inyección remota.
+* `on_audio_query` & `audiotagger`: Lectura y escritura de metadatos locales (Portadas, Títulos, Álbumes).
+* `path_provider` & `record`: Para funciones de grabación en caché.
 
-## 🚀 Instalación y Despliegue
-Sigue estos pasos para compilar la aplicación de forma local:
+### UI, Gráficos y Sistema
+* `palette_generator`: Procesamiento de imágenes para extracción de colores dominantes.
+* `flutter_lyric`: Lienzo interactivo de letras Netease.
+* `interactive_slider` & `perfect_volume_control`: Manipulación directa de los canales de hardware del teléfono.
+* `flutter_local_notifications`: Disparador de alarmas locales con vibración háptica al finalizar un Pomodoro.
+* `permission_handler`: Puente nativo para requerir permisos granulares en Android 13+ (Almacenamiento y Notificaciones).
 
-1. **Clona el repositorio** en tu máquina local.
-2. **Verifica tu entorno:** Asegúrate de tener el SDK de Flutter (`^3.11.4` o superior) instalado y corriendo en `flutter doctor`.
-3. **Instala las dependencias:** Ubícate en la raíz del proyecto y ejecuta:
-   ```bash
-   flutter pub get
-   ```
-4. **Configura tus variables de entorno (`.env`):**
-   Crea un archivo llamado `.env` en la raíz del proyecto (al lado de `pubspec.yaml`) y llénalo con tus credenciales:
-   ```env
-   SUPABASE_URL=tu_url_del_proyecto_supabase
-   SUPABASE_ANON_KEY=tu_anon_key_de_supabase
-   SPOTIFY_CLIENT_ID=tu_cliente_id_de_spotify_developer
-   GENIUS_TOKEN=tu_token_de_la_api_de_genius
-   ```
-5. **Vincula Firebase (Crashlytics / Push):**
-   Para que FCM compile correctamente, recuerda haber generado y añadido el archivo `google-services.json` para Android dentro de `android/app/`.
-6. **Compila en el dispositivo:**
-   Conecta tu teléfono (recomendado) o enciende un emulador y ejecuta:
-   ```bash
-   flutter run
-   ```
-   *(Opcional) Si quieres compilar el APK de producción:*
-   ```bash
-   flutter build apk --release
-   ```
+---
+
+## 🚀 Guía de Instalación y Despliegue
+Sigue estos pasos rigurosos para levantar el proyecto localmente sin errores:
+
+### 1. Clonar el repositorio y dependencias
+```bash
+git clone https://github.com/tu_usuario/music_stereo.git
+cd music_stereo
+flutter pub get
+```
+
+### 2. Configurar Variables de Entorno (Obligatorio)
+Crea un archivo llamado `.env` en la raíz del proyecto (junto a `pubspec.yaml`) e inyecta tus llaves maestras:
+```env
+SUPABASE_URL=tu_url_del_proyecto_supabase
+SUPABASE_ANON_KEY=tu_anon_key_de_supabase
+SPOTIFY_CLIENT_ID=tu_cliente_id_de_spotify_developer
+GENIUS_TOKEN=tu_token_de_la_api_de_genius
+```
+
+### 3. Configurar Firebase (Google Services)
+Para que el motor de notificaciones Push (FCM) y Crashlytics compilen, debes:
+1. Ir a la Consola de Firebase y registrar un proyecto Android con tu nombre de paquete.
+2. Descargar el archivo `google-services.json`.
+3. Pegarlo en la ruta exacta: `android/app/google-services.json`.
+
+### 4. Compilación en Entorno de Desarrollo (Debug)
+Conecta tu teléfono físico (Recomendado para probar audios y haptics) o un emulador:
+```bash
+flutter run
+```
+
+### 5. ⚠️ Compilación para Producción (Release APK)
+Si vas a construir el instalador final, Android activará el modo R8/ProGuard que ofusca el código. Para evitar que el reproductor en segundo plano se rompa, asegúrate de que el archivo `android/app/proguard-rules.pro` contenga las reglas estipuladas para `just_audio` y `spotify_sdk`.
+
+Para generar el APK:
+```bash
+flutter build apk --release
+```
+El archivo resultante estará en: `build/app/outputs/flutter-apk/app-release.apk`

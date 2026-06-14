@@ -103,8 +103,13 @@ Future<void> main() async {
   // ✨ ESTO ES LO QUE FALTABA: Inicializar la notificación de la barra de estado
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
-    androidNotificationChannelName: 'TecConnection Reproducción',
+    androidNotificationChannelName: 'Music Stereo Reproducción',
     androidNotificationOngoing: true,
+    // ✨ Configuración de los controles del reproductor en la notificación
+    androidShowPreviousButton: true,
+    androidShowNextButton: true,
+    // Ícono principal de la barra superior (el logotípo pequeñito)
+    androidNotificationIcon: 'mipmap/ic_launcher',
   );
 
   await NetworkRadar.init();
@@ -120,18 +125,18 @@ Future<void> main() async {
   await PlayerManager.loadFavoriteRadios(); // ✨ Cargar las radios favoritas guardadas
   await PomodoroEngine.initNotifications(); // ✨ Inicializar alertas Push del Pomodoro
 
-  runApp(const ProviderScope(child: TecConnectionApp()));
+  runApp(const ProviderScope(child: MusicStereoApp()));
 }
 
-class TecConnectionApp extends StatelessWidget {
-  const TecConnectionApp({super.key});
+class MusicStereoApp extends StatelessWidget {
+  const MusicStereoApp({super.key});
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: AppState.themeMode,
       builder: (context, currentMode, _) => MaterialApp(
         navigatorKey: navigatorKey, // ✨ Conectamos la llave maestra a la App
-        title: 'TecConnection Hub',
+        title: 'Music Stereo',
         debugShowCheckedModeBanner: false,
         themeMode: currentMode,
         theme: DinobotTheme.lightTheme,

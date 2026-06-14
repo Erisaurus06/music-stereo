@@ -32,7 +32,7 @@ class LyricsEngine {
             lrclibUrl,
             headers: {
               'User-Agent':
-                  'TecConnection_MusicApp/1.0.0 (https://github.com/tuusuario)',
+                  'MusicStereo_MusicApp/1.0.0 (https://github.com/tuusuario)',
             },
           )
           .timeout(const Duration(seconds: 5));
