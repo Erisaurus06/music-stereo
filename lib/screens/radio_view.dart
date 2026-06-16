@@ -26,7 +26,7 @@ class _RadioViewState extends State<RadioView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this); // ✨ 3 Pestañas
     _cargarRadios(); // Carga las top al iniciar
   }
 
@@ -165,6 +165,7 @@ class _RadioViewState extends State<RadioView>
                 tabs: const [
                   Tab(text: "EXPLORAR"),
                   Tab(text: "FAVORITAS"),
+                  Tab(text: "GRABACIONES"), // ✨ NUEVA PESTAÑA
                 ],
               ),
 
@@ -183,11 +184,63 @@ class _RadioViewState extends State<RadioView>
                       isFavoritesTab: true,
                       bottomSpace: listBottomSpace,
                     ),
+                    _buildRecordingsTab(
+                      theme,
+                      bottomSpace: listBottomSpace,
+                    ), // ✨ CONTENIDO GRABACIONES
                   ],
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ✨ NUEVO: Pestaña dedicada a las Grabaciones de Radio
+  Widget _buildRecordingsTab(ThemeData theme, {required double bottomSpace}) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: bottomSpace,
+        left: 20,
+        right: 20,
+        top: 40,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.mic_external_on_rounded,
+              size: 80,
+              color: theme.primaryColor.withOpacity(0.5),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              "Tus Casetes",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: theme.textTheme.bodyLarge?.color,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              "Toca el botón rojo (⏺) en cualquier emisora para comenzar a grabar en vivo. Tus grabaciones MP3 aparecerán aquí.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+            ),
+            const SizedBox(height: 30),
+            ElevatedButton.icon(
+              onPressed: () => _tabController.animateTo(0),
+              icon: const Icon(Icons.explore_rounded),
+              label: const Text("Ir a Explorar"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.primaryColor,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -284,7 +337,14 @@ class _RadioViewState extends State<RadioView>
     return Container(
       margin: isGrid ? EdgeInsets.zero : const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
-        color: theme.cardColor,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.cardColor.withOpacity(0.9),
+            theme.cardColor.withOpacity(0.6),
+          ],
+        ),
         borderRadius: BorderRadius.circular(
           20,
         ), // ✨ iOS: Bordes "Super Ellipse"
@@ -306,65 +366,129 @@ class _RadioViewState extends State<RadioView>
       child: Material(
         color: Colors.transparent, // Permite ver el fondo de la tarjeta
         borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          // ✨ Animación nativa fluida al tocar
-          borderRadius: BorderRadius.circular(20),
-          splashFactory: InkSparkle
-              .splashFactory, // ✨ Android 13+: Respuesta táctil inmersiva y cristalina
-          onTap: () {
-            HapticFeedback.selectionClick();
-            PlayerManager.playRadio(radio);
-          },
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 15,
-              vertical: 8,
+        // ✨ NUEVO: Deslizar para interacción rápida (Swipe)
+        child: Dismissible(
+          key: Key(radio.id),
+          direction: DismissDirection.endToStart,
+          background: Container(
+            alignment: Alignment.centerRight,
+            padding: const EdgeInsets.only(right: 25),
+            decoration: BoxDecoration(
+              color: isFav ? Colors.redAccent : Colors.green.shade400,
+              borderRadius: BorderRadius.circular(20),
             ),
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(15),
-              child: Image.network(
-                radio.favicon.isNotEmpty
-                    ? radio.favicon
-                    : 'https://via.placeholder.com/150',
-                width: 55,
-                height: 55,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+            child: Icon(
+              isFav ? Icons.heart_broken_rounded : Icons.favorite_rounded,
+              color: Colors.white,
+              size: 30,
+            ),
+          ),
+          confirmDismiss: (direction) async {
+            // Realiza la acción pero cancela la animación de "eliminar" visualmente la tarjeta
+            HapticFeedback.heavyImpact();
+            PlayerManager.toggleRadioFavorite(radio);
+            return false;
+          },
+          child: InkWell(
+            // ✨ Animación nativa fluida al tocar
+            borderRadius: BorderRadius.circular(20),
+            splashFactory: InkSparkle
+                .splashFactory, // ✨ Android 13+: Respuesta táctil inmersiva y cristalina
+            onTap: () {
+              HapticFeedback.selectionClick();
+              PlayerManager.playRadio(radio);
+            },
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 15,
+                vertical: 8,
+              ),
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: Image.network(
+                  radio.favicon.isNotEmpty
+                      ? radio.favicon
+                      : 'https://via.placeholder.com/150',
                   width: 55,
                   height: 55,
-                  color: theme.primaryColor.withOpacity(0.2),
-                  child: Icon(Icons.radio, color: theme.primaryColor),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 55,
+                    height: 55,
+                    color: theme.primaryColor.withOpacity(0.2),
+                    child: Icon(Icons.radio, color: theme.primaryColor),
+                  ),
                 ),
               ),
-            ),
-            title: Text(
-              radio.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                color: theme.textTheme.bodyLarge?.color,
+              title: Text(
+                radio.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: theme.textTheme.bodyLarge?.color,
+                ),
               ),
-            ),
-            subtitle: Text(
-              radio.country.isNotEmpty ? radio.country : "Global",
-              maxLines: 1,
-              style: TextStyle(
-                color: theme.primaryColor,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+              subtitle: Text(
+                radio.country.isNotEmpty ? radio.country : "Global",
+                maxLines: 1,
+                style: TextStyle(
+                  color: theme.primaryColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            trailing: IconButton(
-              icon: Icon(
-                isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                color: isFav ? Colors.redAccent : Colors.grey.withOpacity(0.5),
+              // ✨ NUEVO: Botones agrupados (Grabar + Favorito)
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ValueListenableBuilder<bool>(
+                    valueListenable: PlayerManager.isRecording,
+                    builder: (context, isRecording, _) {
+                      // Si está grabando y es la radio actual, mostrar rojo palpitante
+                      bool recordingThis =
+                          isRecording &&
+                          PlayerManager.currentArtwork.value == radio.favicon;
+                      return IconButton(
+                        icon: Icon(
+                          recordingThis
+                              ? Icons.stop_circle_rounded
+                              : Icons.radio_button_checked_rounded,
+                          color: recordingThis
+                              ? Colors.redAccent
+                              : Colors.grey.withOpacity(0.4),
+                          size: recordingThis ? 28 : 24,
+                        ),
+                        onPressed: () {
+                          HapticFeedback.heavyImpact();
+                          if (recordingThis) {
+                            PlayerManager.stopRecording(context);
+                          } else {
+                            PlayerManager.playRadio(
+                              radio,
+                            ).then((_) => PlayerManager.startRecording());
+                          }
+                        },
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      isFav
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      color: isFav
+                          ? Colors.redAccent
+                          : Colors.grey.withOpacity(0.4),
+                    ),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      PlayerManager.toggleRadioFavorite(radio);
+                    },
+                  ),
+                ],
               ),
-              onPressed: () {
-                HapticFeedback.selectionClick();
-                PlayerManager.toggleRadioFavorite(radio);
-              },
             ),
           ),
         ),

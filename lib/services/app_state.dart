@@ -74,6 +74,7 @@ class AppState {
     enableHaptics.value = _prefs.getBool('enableHaptics') ?? true;
     highFidelityAnimations.value =
         _prefs.getBool('highFidelityAnimations') ?? true;
+    biometricLockEnabled.value = _prefs.getBool('biometricLockEnabled') ?? true;
 
     // 4. EL AUTO-GUARDADO MÁGICO (Listeners)
     playerLayout.addListener(() {
@@ -90,6 +91,10 @@ class AppState {
 
     highFidelityAnimations.addListener(() {
       _prefs.setBool('highFidelityAnimations', highFidelityAnimations.value);
+    });
+
+    biometricLockEnabled.addListener(() {
+      _prefs.setBool('biometricLockEnabled', biometricLockEnabled.value);
     });
   }
 
@@ -187,6 +192,7 @@ class AppState {
   );
   static final ValueNotifier<bool> enableHaptics = ValueNotifier(true);
   static final ValueNotifier<bool> highFidelityAnimations = ValueNotifier(true);
+  static final ValueNotifier<bool> biometricLockEnabled = ValueNotifier(true);
 
   static get supabase => null;
 
@@ -206,6 +212,11 @@ class AppState {
   static void setAnimations(bool val) {
     highFidelityAnimations.value = val;
     _prefs.setBool('highFidelityAnimations', val);
+    sincronizarConNube();
+  }
+
+  static void setBiometricLock(bool val) {
+    biometricLockEnabled.value = val;
     sincronizarConNube();
   } // ✨ LÓGICA PARA GUARDAR/QUITAR CANCIONES FAVORITAS
 

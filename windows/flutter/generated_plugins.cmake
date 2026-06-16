@@ -9,6 +9,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   firebase_core
   flutter_inappwebview_windows
   flutter_volume_controller
+  local_auth_windows
   permission_handler_windows
   record_windows
   url_launcher_windows

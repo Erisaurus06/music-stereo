@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide RepeatMode;
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
@@ -24,6 +24,7 @@ import '../artwork_engine.dart';
 import 'equalizer_manager.dart';
 import 'recording_manager.dart';
 import 'spotify_manager.dart';
+import '../pomodoro_engine.dart';
 
 // --- EL DIRECTOR DE RÍOS (ESTADO ESTRICTO) ---
 enum AudioEngineType { local, spotify, radio, none }
@@ -38,8 +39,14 @@ class PlayerManager {
       SpotifyManager.isSpotifyLinked;
 
   static Future<void> startRecording() => RecordingManager.startRecording();
-  static Future<void> stopRecording(BuildContext? context) =>
-      RecordingManager.stopRecording(context);
+  static Future<void> stopRecording(BuildContext? context) async {
+    await RecordingManager.stopRecording(context);
+    PomodoroEngine.showCustomNotification(
+      "Grabación Finalizada",
+      "Tu pista de audio ha sido procesada y guardada.",
+    );
+  }
+
   static Future<void> connectToSpotify() => SpotifyManager.connectToSpotify();
   static void startSpotifyRadar() => SpotifyManager.startSpotifyRadar();
 
@@ -67,8 +74,12 @@ class PlayerManager {
   );
   static final ValueNotifier<dynamic> currentArtwork = ValueNotifier(null);
 
+  // ✨ INTERFAZ MEJORADA: Color por defecto centralizado en una constante
+  static const Color _defaultThemeColor = Color(0xFF2563EB);
+
   static final ValueNotifier<Color> currentThemeColor = ValueNotifier(
     const Color(0xFF2563EB), // ✨ Azul por defecto en lugar de Verde Spotify
+    _defaultThemeColor,
   );
 
   // ✨ NUEVO: Permitir al usuario forzar un color (Rojo, Morado, Verde, Rosa, Amarillo)
@@ -114,6 +125,7 @@ class PlayerManager {
         _updateDominantColorLocal(currentSong.value!);
       } else {
         updateThemeColor(const Color(0xFF2563EB));
+        updateThemeColor(_defaultThemeColor);
       }
     }
   }
@@ -135,7 +147,9 @@ class PlayerManager {
   static List<SongModel> playbackQueue = [];
 
   static final ValueNotifier<bool> isShuffle = ValueNotifier(false);
-  static final ValueNotifier<int> repeatMode = ValueNotifier(0);
+  static final ValueNotifier<int> repeatMode = ValueNotifier(
+    0,
+  ); // 0: Ninguno, 1: Toda la lista, 2: Bucle Infinito
 
   static int _crossfadeToken =
       0; // ✨ NUEVO: Token para evitar cruces de animaciones
@@ -145,6 +159,25 @@ class PlayerManager {
     final SongModel song = playbackQueue.removeAt(oldIndex);
     playbackQueue.insert(newIndex, song);
     HapticFeedback.mediumImpact();
+  }
+
+  // ✨ NUEVO: Agregar a la fila de reproducción (Para el gesto de deslizar)
+  static void addToQueue(SongModel song) {
+    if (!playbackQueue.any((s) => s.id == song.id)) {
+      playbackQueue.add(song);
+      HapticFeedback.lightImpact();
+      debugPrint("🎵 Agregado a la fila: ${song.title}");
+    }
+  }
+
+  // ✨ NUEVO: Alternar Modo Bucle Infinito
+  static void toggleLoopMode() {
+    if (activeEngine.value == AudioEngineType.spotify) {
+      SpotifySdk.setRepeatMode(repeatMode: RepeatMode.track);
+    } else {
+      repeatMode.value = (repeatMode.value + 1) % 3; // Cicla entre 0, 1 y 2
+      HapticFeedback.selectionClick();
+    }
   }
 
   static void _updateQueue() {
@@ -235,6 +268,7 @@ class PlayerManager {
       if (state == ProcessingState.completed &&
           activeEngine.value == AudioEngineType.local) {
         if (repeatMode.value == 2) {
+          // ✨ BUCLE INFINITO APLICADO AQUÍ
           seek(Duration.zero);
           player.play();
         } else {
@@ -301,6 +335,20 @@ class PlayerManager {
     }
   }
 
+  // ✨ INTERFAZ MEJORADA: Lógica de paleta de colores extraída a un método reutilizable
+  static Future<void> _updateColorFromImageProvider(
+      ImageProvider provider) async {
+    try {
+      final palette = await PaletteGenerator.fromImageProvider(provider);
+      updateThemeColor(palette.dominantColor?.color ??
+          palette.vibrantColor?.color ??
+          _defaultThemeColor);
+    } catch (e) {
+      debugPrint("⚠️ Error generando paleta: $e");
+      updateThemeColor(_defaultThemeColor);
+    }
+  }
+
   static Future<void> _updateDominantColorLocal(SongModel song) async {
     updateThemeColor(const Color(0xFF2563EB)); // ✨ Azul si no hay portada local
     try {
@@ -317,8 +365,10 @@ class PlayerManager {
               palette.vibrantColor?.color ??
               const Color(0xFF2563EB),
         );
+        await _updateColorFromImageProvider(MemoryImage(artwork));
         return;
       }
+      // Si no hay portada local, buscamos en la web
       String? url = await ArtworkEngine.buscarPortada(
         song.title,
         song.artist ?? "",
@@ -332,9 +382,14 @@ class PlayerManager {
               palette.vibrantColor?.color ??
               const Color(0xFF2563EB),
         );
+        await _updateColorFromImageProvider(NetworkImage(url));
+      } else {
+        updateThemeColor(_defaultThemeColor); // Si no encuentra nada, usa el default
       }
     } catch (e) {
       debugPrint("Error color: $e");
+      debugPrint("Error actualizando color local: $e");
+      updateThemeColor(_defaultThemeColor);
     }
   }
 
@@ -395,6 +450,18 @@ class PlayerManager {
     }
   }
 
+  // ✨ INTERFAZ MEJORADA: Lógica para pausar Spotify extraída a un método reutilizable
+  static Future<void> _pauseSpotifyEngine() async {
+    SpotifyManager.spotifyTimer?.cancel();
+    if (isSpotifyLinked.value) {
+      try {
+        await SpotifySdk.pause();
+      } catch (e) {
+        debugPrint("⚠️ No se pudo pausar Spotify: $e");
+      }
+    }
+  }
+
   static Future<void> playSong(SongModel song) async {
     try {
       if (player.playing && activeEngine.value == AudioEngineType.local) {
@@ -416,6 +483,7 @@ class PlayerManager {
           );
         }
       }
+      await _pauseSpotifyEngine();
 
       currentSong.value = song;
       currentTitle.value = song.title;
@@ -504,6 +572,7 @@ class PlayerManager {
           );
         }
       }
+      await _pauseSpotifyEngine();
 
       currentTitle.value = station.name;
       currentArtist.value = "EN VIVO • ${station.country.toUpperCase()}";
@@ -523,8 +592,10 @@ class PlayerManager {
           debugPrint("⚠️ Error generando paleta para la Radio: $e");
           updateThemeColor(const Color(0xFF2563EB));
         }
+        await _updateColorFromImageProvider(NetworkImage(station.favicon));
       } else {
         updateThemeColor(const Color(0xFF2563EB));
+        updateThemeColor(_defaultThemeColor);
       }
 
       final audioSource = AudioSource.uri(

@@ -192,7 +192,7 @@ class PomodoroEngine {
       secondsRemaining.value = breakDurationInSeconds;
 
       // ✨ Lanzar Notificación Push Local
-      await _showPushNotification(
+      await showCustomNotification(
         "¡Tiempo de Descanso! ☕",
         "Tu sesión de 25 minutos ha terminado. ¡Tómate un respiro!",
       );
@@ -201,14 +201,15 @@ class PomodoroEngine {
       secondsRemaining.value = focusDurationInSeconds;
 
       // ✨ Lanzar Notificación Push Local
-      await _showPushNotification(
+      await showCustomNotification(
         "¡Hora de Concentrarse! 🎯",
         "El descanso terminó. ¡Vamos a darle con todo!",
       );
     }
   }
 
-  static Future<void> _showPushNotification(String title, String body) async {
+  // ✨ NUEVO: Método público para lanzar alertas del sistema desde cualquier lado
+  static Future<void> showCustomNotification(String title, String body) async {
     const AndroidNotificationDetails
     androidDetails = AndroidNotificationDetails(
       'pomodoro_channel_v5', // ✨ Forzamos un canal nuevo y limpio

@@ -16,6 +16,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import '../widgets/bluetooth_panel.dart';
+import 'equalizer_view.dart';
 
 // --- 6. AJUSTES (Settings Pro con Nuevas Opciones y Memoria) ---
 class SettingsProView extends StatefulWidget {
@@ -103,6 +104,7 @@ class _SettingsProViewState extends State<SettingsProView> {
                   valueListenable: AppState.themeMode,
                   builder: (context, mode, _) =>
                       DropdownButtonFormField<ThemeMode>(
+                        isExpanded: true, // ✨ Evita el overflow de tipografía
                         value: mode,
                         decoration: const InputDecoration(
                           border: InputBorder.none,
@@ -138,6 +140,110 @@ class _SettingsProViewState extends State<SettingsProView> {
                       ),
                 ),
               ),
+              const Divider(height: 1, color: Colors.white10),
+              // ✨ NUEVO: Selector Manual de Color del Reproductor
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Color del Tema (Player)",
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        children: [
+                          _buildColorDot(
+                            context,
+                            null,
+                            "Camaleón\n(Automático)",
+                          ),
+                          _buildColorDot(
+                            context,
+                            const Color(0xFFE63946),
+                            "Rojo\nApple",
+                          ),
+                          _buildColorDot(
+                            context,
+                            const Color(0xFF9D4EDD),
+                            "Morado\nNeón",
+                          ),
+                          _buildColorDot(
+                            context,
+                            const Color(0xFF1DB954),
+                            "Verde\nSpotify",
+                          ),
+                          _buildColorDot(
+                            context,
+                            const Color(0xFFFF006E),
+                            "Rosa\nBarbie",
+                          ),
+                          _buildColorDot(
+                            context,
+                            const Color(0xFFFFBE0B),
+                            "Amarillo\nSolar",
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Colors.white10),
+              // ✨ NUEVO: Selector de Tipografía (Apple vs Android)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: ValueListenableBuilder<String>(
+                  // Reemplaza esto con AppState.fontFamily cuando lo agregues
+                  valueListenable: ValueNotifier("San Francisco"),
+                  builder: (context, font, _) =>
+                      DropdownButtonFormField<String>(
+                        isExpanded: true, // ✨ Evita el overflow de tipografía
+                        value: font,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          labelText: "Estilo de Tipografía",
+                          labelStyle: TextStyle(color: Colors.grey),
+                        ),
+                        dropdownColor: theme.cardColor,
+                        style: TextStyle(
+                          color: theme.textTheme.bodyLarge?.color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: "San Francisco",
+                            child: Text("San Francisco (Estilo Apple)"),
+                          ),
+                          DropdownMenuItem(
+                            value: "Roboto",
+                            child: Text("Roboto (Estilo Android)"),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          // AppState.setFontFamily(v!);
+                          HapticFeedback.selectionClick();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("✒️ Tipografía cambiada a $v"),
+                              backgroundColor: theme.primaryColor,
+                            ),
+                          );
+                        },
+                      ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -155,6 +261,7 @@ class _SettingsProViewState extends State<SettingsProView> {
                   valueListenable: AppState.playerLayout,
                   builder: (context, layout, _) =>
                       DropdownButtonFormField<String>(
+                        isExpanded: true, // ✨ Evita el overflow de tipografía
                         value: layout,
                         decoration: const InputDecoration(
                           border: InputBorder.none,
@@ -246,6 +353,41 @@ class _SettingsProViewState extends State<SettingsProView> {
                     if (AppState.enableHaptics.value) {
                       HapticFeedback.lightImpact();
                     }
+                  },
+                ),
+              ),
+              const Divider(height: 1, color: Colors.white10),
+              // ✨ NUEVO: Interfaz para Bloqueo Biométrico
+              ValueListenableBuilder<bool>(
+                valueListenable: AppState
+                    .biometricLockEnabled, // ✨ Conectado a la memoria real
+                builder: (context, isLocked, _) => SwitchListTile(
+                  title: Text(
+                    "Bloqueo Biométrico (Huella/FaceID)",
+                    style: TextStyle(
+                      color: theme.textTheme.bodyLarge?.color,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                  subtitle: const Text(
+                    "Protege la app al minimizarla o iniciarla",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  activeColor: theme.primaryColor,
+                  value: isLocked,
+                  onChanged: (v) {
+                    AppState.biometricLockEnabled.value =
+                        v; // ✨ Activa/Desactiva de verdad
+                    HapticFeedback.heavyImpact();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text(
+                          "🔐 Configuración de seguridad actualizada",
+                        ),
+                        backgroundColor: theme.primaryColor,
+                      ),
+                    );
                   },
                 ),
               ),
@@ -464,6 +606,36 @@ class _SettingsProViewState extends State<SettingsProView> {
             context,
             title: "Motor de Audio",
             children: [
+              ListTile(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EqualizerView(),
+                    ),
+                  );
+                },
+                leading: const Icon(
+                  Icons.tune_rounded,
+                  color: Colors.orangeAccent,
+                  size: 28,
+                ),
+                title: const Text(
+                  "Ecualizador Pro",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text(
+                  "Ajusta frecuencias y graves",
+                  style: TextStyle(fontSize: 12),
+                ),
+                trailing: const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: Colors.white24,
+                ),
+              ),
+              const Divider(height: 1, color: Colors.white10),
               ValueListenableBuilder<Color>(
                 valueListenable: PlayerManager.currentThemeColor,
                 builder: (context, themeColor, _) {
@@ -619,8 +791,22 @@ class _SettingsProViewState extends State<SettingsProView> {
               const Divider(height: 1, color: Colors.white10),
               ListTile(
                 onTap: () async {
-                  await Supabase.instance.client.auth.signOut();
                   HapticFeedback.heavyImpact();
+                  // ✨ NUEVO: Notificación antes de salir
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text(
+                        "👋 Cerrando sesión de forma segura... ¡Vuelve pronto!",
+                      ),
+                      backgroundColor: theme.primaryColor,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
+                  await Supabase.instance.client.auth.signOut();
+                  // Aquí puedes hacer Navigator.pushReplacement hacia tu AuthGate
                 },
                 leading: const Icon(
                   Icons.logout_rounded,
@@ -716,6 +902,57 @@ class _SettingsProViewState extends State<SettingsProView> {
           child: Column(children: children),
         ),
       ],
+    );
+  }
+
+  // ✨ NUEVO: Botón circular para elegir color
+  Widget _buildColorDot(BuildContext context, Color? color, String label) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        PlayerManager.setManualThemeColor(color);
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(right: 15),
+        child: Column(
+          children: [
+            Container(
+              width: 45,
+              height: 45,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color ?? Theme.of(context).cardColor,
+                border: Border.all(
+                  color: color == null ? Colors.white54 : Colors.white24,
+                  width: color == null ? 1 : 2,
+                ),
+              ),
+              child: color == null
+                  ? const Icon(
+                      Icons.palette_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    )
+                  : null,
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: 55,
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.white70,
+                  height: 1.2,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_lyric/lyrics_reader.dart';
+import 'package:flutter_lyric/lyrics_reader_model.dart';
 import '../services/player_manager.dart';
 import '../lyrics_engine.dart';
 
@@ -55,9 +56,14 @@ class _LyricsViewState extends State<LyricsView> {
 
     if (_isSynced) {
       // Cargamos el motor de karaoke de flutter_lyric
-      _lyricModel = LyricsModelBuilder.create()
-          .bindLyricToMain(fetchedLyrics)
-          .getModel();
+      try {
+        _lyricModel = LyricsModelBuilder.create()
+            .bindLyricToMain(fetchedLyrics)
+            .getModel();
+      } catch (e) {
+        debugPrint("Error construyendo LRC: $e");
+        _isSynced = false; // Cae al modo estático si falla
+      }
     }
 
     if (mounted) {
@@ -150,10 +156,17 @@ class _LyricsViewState extends State<LyricsView> {
           _lyricsText ?? "No se encontraron letras.",
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 22,
-            height: 1.6,
-            fontWeight: FontWeight.w600,
+            fontSize: 24,
+            height: 1.8,
+            fontWeight: FontWeight.w800,
             color: theme.textTheme.bodyLarge?.color?.withOpacity(0.8),
+            shadows: [
+              Shadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
         ),
       ),
@@ -169,27 +182,40 @@ class _AppLyricUI extends UINetease {
   _AppLyricUI({required this.activeColor, required this.inactiveColor});
 
   @override
-  TextStyle getPlayingExtTextStyle() =>
-      TextStyle(color: activeColor, fontSize: 24, fontWeight: FontWeight.bold);
-
-  @override
-  TextStyle getOtherExtTextStyle() =>
-      TextStyle(color: inactiveColor, fontSize: 20);
-
-  @override
-  TextStyle getPlayingMainTextStyle() =>
-      TextStyle(color: activeColor, fontSize: 30, fontWeight: FontWeight.w900);
-
-  @override
-  TextStyle getOtherMainTextStyle() => TextStyle(
-    color: inactiveColor,
-    fontSize: 24,
-    fontWeight: FontWeight.w700,
+  TextStyle getPlayingExtTextStyle() => TextStyle(
+    color: activeColor,
+    fontSize: 26,
+    fontWeight: FontWeight.w900,
+    letterSpacing: -0.5,
   );
 
   @override
-  double getInlineSpace() => 20.0;
+  TextStyle getOtherExtTextStyle() => TextStyle(
+    color: inactiveColor,
+    fontSize: 20,
+    fontWeight: FontWeight.w500,
+  );
 
   @override
-  double getLineSpace() => 30.0; // Espaciado cómodo entre líneas
+  TextStyle getPlayingMainTextStyle() => TextStyle(
+    color: activeColor,
+    fontSize: 34,
+    fontWeight: FontWeight.w900,
+    letterSpacing: -1.0, // ✨ Estilo Apple Music (letras más juntas)
+  );
+
+  @override
+  TextStyle getOtherMainTextStyle() => TextStyle(
+    color: inactiveColor.withOpacity(
+      0.6,
+    ), // Más suave para que resalte la actual
+    fontSize: 26,
+    fontWeight: FontWeight.w600,
+  );
+
+  @override
+  double getInlineSpace() => 24.0;
+
+  @override
+  double getLineSpace() => 35.0; // Espaciado cómodo entre líneas
 }

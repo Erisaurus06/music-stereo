@@ -8,7 +8,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 // Importaciones de tu arquitectura limpia
 import 'services/network_radar.dart';
 import 'services/app_state.dart';
+import 'services/app_state.dart';
 import 'services/player_manager.dart';
+import 'services/bubble_manager.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -16,6 +18,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'screens/auth_gate.dart';
 import 'pomodoro_engine.dart';
+import 'package:local_auth/local_auth.dart';
 
 // ✨ LLAVE MAESTRA DE NAVEGACIÓN (Para movernos desde las notificaciones)
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -105,9 +108,6 @@ Future<void> main() async {
     androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
     androidNotificationChannelName: 'Music Stereo Reproducción',
     androidNotificationOngoing: true,
-    // ✨ Configuración de los controles del reproductor en la notificación
-    androidShowPreviousButton: true,
-    androidShowNextButton: true,
     // Ícono principal de la barra superior (el logotípo pequeñito)
     androidNotificationIcon: 'mipmap/ic_launcher',
   );
@@ -125,23 +125,165 @@ Future<void> main() async {
   await PlayerManager.loadFavoriteRadios(); // ✨ Cargar las radios favoritas guardadas
   await PomodoroEngine.initNotifications(); // ✨ Inicializar alertas Push del Pomodoro
 
+  await BubbleManager.init(); // ✨ Inicializar la burbuja flotante
+
   runApp(const ProviderScope(child: MusicStereoApp()));
 }
 
-class MusicStereoApp extends StatelessWidget {
+class MusicStereoApp extends StatefulWidget {
   const MusicStereoApp({super.key});
+
+  @override
+  State<MusicStereoApp> createState() => _MusicStereoAppState();
+}
+
+class _MusicStereoAppState extends State<MusicStereoApp>
+    with WidgetsBindingObserver {
+  final LocalAuthentication auth = LocalAuthentication();
+  // ✨ La app inicia bloqueada SOLO SI el usuario lo tiene activado
+  bool _isLocked = AppState.biometricLockEnabled.value;
+  bool _isAuthenticating =
+      false; // ✨ Evita que el usuario toque el botón múltiples veces
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // ✨ Solo pedimos biometría al abrir si la opción está activa
+    if (AppState.biometricLockEnabled.value) {
+      _authenticate();
+    } else {
+      setState(() => _isLocked = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Si el usuario desactivó la función, no hacemos nada.
+    if (!AppState.biometricLockEnabled.value) return;
+
+    // ✨ EVITAR BUCLE: Si el diálogo de huella está abierto, ignoramos el ciclo de vida por completo
+    if (_isAuthenticating) return;
+
+    if (state == AppLifecycleState.paused) {
+      setState(() => _isLocked = true); // Se minimizó, bloquear inmediato
+      PomodoroEngine.showCustomNotification(
+        "Sesión en pausa",
+        "Aplicación bloqueada por inactividad.",
+      );
+    } else if (state == AppLifecycleState.resumed) {
+      // ✨ SOLO pedir biometría si la app está realmente bloqueada
+      if (_isLocked) {
+        _authenticate();
+      }
+    }
+  }
+
+  Future<void> _authenticate() async {
+    // Si ya hay un proceso o la app ya está desbloqueada, no hacemos nada.
+    if (_isAuthenticating || !_isLocked) return;
+
+    // Doble chequeo de seguridad por si el usuario lo desactiva mientras la app está en segundo plano
+    if (!AppState.biometricLockEnabled.value) {
+      if (mounted) setState(() => _isLocked = false);
+      return;
+    }
+
+    try {
+      // Mostramos al usuario que algo está pasando (ej. un spinner en el botón)
+      if (mounted) setState(() => _isAuthenticating = true);
+
+      final bool canCheckBiometrics = await auth.canCheckBiometrics;
+      final bool isSupported = await auth.isDeviceSupported();
+
+      // Si el dispositivo no tiene huella/cara, dejamos pasar directo
+      if (!canCheckBiometrics || !isSupported) {
+        if (mounted) setState(() => _isLocked = false);
+        return;
+      }
+
+      final bool didAuthenticate = await auth.authenticate(
+        localizedReason: 'Usa tu biometría para desbloquear Music Stereo',
+        options: const AuthenticationOptions(
+          stickyAuth:
+              true, // Mantiene el diálogo aunque la app vaya a segundo plano
+          biometricOnly: false, // Permite usar PIN/Patrón si la huella falla
+        ),
+      );
+
+      if (didAuthenticate) {
+        if (mounted) setState(() => _isLocked = false);
+        PomodoroEngine.showCustomNotification(
+          "Datos Biométricos",
+          "Verificación exitosa, sesión iniciada.",
+        );
+      }
+    } catch (e) {
+      debugPrint("❌ Error biométrico: $e");
+      // Aquí podrías mostrar un SnackBar si quieres notificar al usuario del error
+    } finally {
+      // Pase lo que pase (éxito, fallo o cancelación), reactivamos el botón
+      if (mounted) {
+        setState(() => _isAuthenticating = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: AppState.themeMode,
       builder: (context, currentMode, _) => MaterialApp(
-        navigatorKey: navigatorKey, // ✨ Conectamos la llave maestra a la App
+        navigatorKey: navigatorKey,
         title: 'Music Stereo',
         debugShowCheckedModeBanner: false,
         themeMode: currentMode,
         theme: DinobotTheme.lightTheme,
         darkTheme: DinobotTheme.darkTheme,
-        home: const AuthGate(),
+        home: _isLocked
+            ? Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.lock_person_rounded,
+                        size: 80,
+                        color: Colors.blueAccent,
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        "Aplicación Bloqueada",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      ElevatedButton(
+                        onPressed: _isAuthenticating ? null : _authenticate,
+                        child: _isAuthenticating
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text("Desbloquear"),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : const AuthGate(),
       ),
     );
   }

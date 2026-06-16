@@ -15,12 +15,15 @@ import 'package:interactive_slider/interactive_slider.dart';
 
 import '../models/app_models.dart';
 import '../services/player_manager.dart';
+import '../services/bubble_manager.dart';
 import '../services/app_state.dart';
 import '../services/network_radar.dart';
 import 'design_components.dart';
 import 'package:perfect_volume_control/perfect_volume_control.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'bluetooth_panel.dart';
+import '../screens/equalizer_view.dart'; // ✨ IMPORTAMOS LA NUEVA PANTALLA
+import '../screens/lyrics_view.dart'; // ✨ IMPORTAMOS LA PANTALLA DE LETRAS
 
 // --- 7. REPRODUCTOR GIGANTE (UX MEJORADO: CRISTAL Y CONTRASTE DINÁMICO) ---
 class FullPlayerModal extends StatelessWidget {
@@ -611,6 +614,41 @@ class FullPlayerModal extends StatelessWidget {
                                                           );
                                                         },
                                                       ),
+                                                      const SizedBox(width: 10),
+
+                                                      // ✨ BOTÓN PARA LANZAR LA BURBUJA
+                                                      AnimatedPress(
+                                                        onTap: () {
+                                                          if (AppState
+                                                              .enableHaptics
+                                                              .value) {
+                                                            HapticFeedback.lightImpact();
+                                                          }
+                                                          BubbleManager.show();
+                                                          // Opcional: cerrar el reproductor grande al activar la burbuja
+                                                          // Navigator.pop(context);
+                                                        },
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                12,
+                                                              ),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                                color:
+                                                                    glassBtnColor,
+                                                                shape: BoxShape
+                                                                    .circle,
+                                                              ),
+                                                          child: Icon(
+                                                            Icons
+                                                                .picture_in_picture_alt_rounded,
+                                                            color:
+                                                                activeTextColor,
+                                                            size: 24,
+                                                          ),
+                                                        ),
+                                                      ),
 
                                                       if (!isRadio && !isLofi)
                                                         AnimatedPress(
@@ -619,21 +657,14 @@ class FullPlayerModal extends StatelessWidget {
                                                                 .enableHaptics
                                                                 .value)
                                                               HapticFeedback.lightImpact();
-                                                            showModalBottomSheet(
-                                                              context: context,
-                                                              isScrollControlled:
-                                                                  true,
-                                                              backgroundColor:
-                                                                  Colors
-                                                                      .transparent,
-                                                              builder: (context) =>
-                                                                  LyricsProView(
-                                                                    lyrics:
-                                                                        "[00:00.00] Modo Letras activado...\n[00:05.00] (La API de descargas se conectará pronto)",
-                                                                    songName: PlayerManager
-                                                                        .currentTitle
-                                                                        .value,
-                                                                  ),
+                                                            // ✨ LANZAMOS LA PANTALLA DE LETRAS REAL (CON LA API)
+                                                            Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                builder:
+                                                                    (context) =>
+                                                                        const LyricsView(),
+                                                              ),
                                                             );
                                                           },
                                                           child: Container(
@@ -672,15 +703,13 @@ class FullPlayerModal extends StatelessWidget {
                                                               .enableHaptics
                                                               .value)
                                                             HapticFeedback.lightImpact();
-                                                          showModalBottomSheet(
-                                                            context: context,
-                                                            isScrollControlled:
-                                                                true,
-                                                            backgroundColor:
-                                                                Colors
-                                                                    .transparent,
-                                                            builder: (context) =>
-                                                                const EqualizerProView(),
+                                                          // ✨ AHORA NAVEGA A LA PANTALLA COMPLETA
+                                                          Navigator.push(
+                                                            context,
+                                                            MaterialPageRoute(
+                                                              builder: (context) =>
+                                                                  const EqualizerView(),
+                                                            ),
                                                           );
                                                         },
                                                         child: Container(
@@ -1612,100 +1641,110 @@ class _AudioRouteSheetState extends State<AudioRouteSheet> {
             ],
           ),
           const SizedBox(height: 20),
-          Container(
-            decoration: BoxDecoration(
-              color: theme.scaffoldBackgroundColor,
-              borderRadius: BorderRadius.circular(20),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.35,
             ),
-            child: _buscando
-                ? const Padding(
-                    padding: EdgeInsets.all(30.0),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                : Column(
-                    children: _dispositivos.isEmpty
-                        ? [
-                            ListTile(
-                              leading: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: themeColor.withOpacity(0.1),
-                                  shape: BoxShape.circle,
+            child: Container(
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: _buscando
+                  ? const Padding(
+                      padding: EdgeInsets.all(30.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : ListView(
+                      // ✨ FIX OVERFLOW: De Column a ListView deslizable
+                      shrinkWrap: true,
+                      physics: const BouncingScrollPhysics(),
+                      children: _dispositivos.isEmpty
+                          ? [
+                              ListTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: themeColor.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.smartphone_rounded,
+                                    color: themeColor,
+                                  ),
                                 ),
-                                child: Icon(
-                                  Icons.smartphone_rounded,
+                                title: Text(
+                                  "Moto G41 (Altavoz Interno)",
+                                  style: TextStyle(
+                                    color: theme.textTheme.bodyLarge?.color,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                trailing: Icon(
+                                  Icons.check_circle_rounded,
                                   color: themeColor,
                                 ),
                               ),
-                              title: Text(
-                                "Moto G41 (Altavoz Interno)",
-                                style: TextStyle(
-                                  color: theme.textTheme.bodyLarge?.color,
-                                  fontWeight: FontWeight.bold,
+                            ]
+                          : _dispositivos.map((d) {
+                              bool isBluetooth =
+                                  d.type == AudioDeviceType.bluetoothA2dp;
+                              bool isWired =
+                                  d.type == AudioDeviceType.wiredHeadphones ||
+                                  d.type == AudioDeviceType.wiredHeadset;
+                              bool isSpeaker =
+                                  d.type == AudioDeviceType.builtInSpeaker;
+
+                              IconData icon = Icons.speaker_rounded;
+                              if (isBluetooth)
+                                icon = Icons.bluetooth_audio_rounded;
+                              if (isWired) icon = Icons.headphones_rounded;
+                              if (isSpeaker) icon = Icons.smartphone_rounded;
+
+                              String nombre = d.name;
+                              if (isSpeaker &&
+                                  (nombre.isEmpty ||
+                                      nombre.toLowerCase().contains(
+                                        "speaker",
+                                      ))) {
+                                nombre = "Moto G41 (Altavoz Interno)";
+                              } else if (nombre.isEmpty) {
+                                nombre = "Dispositivo de Audio";
+                              }
+
+                              String subtitulo = "Conexión interna";
+                              if (isBluetooth)
+                                subtitulo = "Conectado vía Bluetooth";
+                              if (isWired) subtitulo = "Conectado por cable";
+
+                              return ListTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: themeColor.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(icon, color: themeColor),
                                 ),
-                              ),
-                              trailing: Icon(
-                                Icons.check_circle_rounded,
-                                color: themeColor,
-                              ),
-                            ),
-                          ]
-                        : _dispositivos.map((d) {
-                            bool isBluetooth =
-                                d.type == AudioDeviceType.bluetoothA2dp;
-                            bool isWired =
-                                d.type == AudioDeviceType.wiredHeadphones ||
-                                d.type == AudioDeviceType.wiredHeadset;
-                            bool isSpeaker =
-                                d.type == AudioDeviceType.builtInSpeaker;
-
-                            IconData icon = Icons.speaker_rounded;
-                            if (isBluetooth)
-                              icon = Icons.bluetooth_audio_rounded;
-                            if (isWired) icon = Icons.headphones_rounded;
-                            if (isSpeaker) icon = Icons.smartphone_rounded;
-
-                            String nombre = d.name;
-                            if (isSpeaker &&
-                                (nombre.isEmpty ||
-                                    nombre.toLowerCase().contains("speaker"))) {
-                              nombre = "Moto G41 (Altavoz Interno)";
-                            } else if (nombre.isEmpty) {
-                              nombre = "Dispositivo de Audio";
-                            }
-
-                            String subtitulo = "Conexión interna";
-                            if (isBluetooth)
-                              subtitulo = "Conectado vía Bluetooth";
-                            if (isWired) subtitulo = "Conectado por cable";
-
-                            return ListTile(
-                              leading: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: themeColor.withOpacity(0.1),
-                                  shape: BoxShape.circle,
+                                title: Text(
+                                  nombre,
+                                  style: TextStyle(
+                                    color: theme.textTheme.bodyLarge?.color,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
-                                child: Icon(icon, color: themeColor),
-                              ),
-                              title: Text(
-                                nombre,
-                                style: TextStyle(
-                                  color: theme.textTheme.bodyLarge?.color,
-                                  fontWeight: FontWeight.w800,
+                                subtitle: Text(
+                                  subtitulo,
+                                  style: const TextStyle(fontSize: 12),
                                 ),
-                              ),
-                              subtitle: Text(
-                                subtitulo,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                              trailing: const Icon(
-                                Icons.waves_rounded,
-                                color: Colors.grey,
-                              ),
-                            );
-                          }).toList(),
-                  ),
+                                trailing: const Icon(
+                                  Icons.waves_rounded,
+                                  color: Colors.grey,
+                                ),
+                              );
+                            }).toList(),
+                    ),
+            ),
           ),
           const SizedBox(height: 20),
           SizedBox(
@@ -2088,18 +2127,26 @@ class _EqualizerProViewState extends State<EqualizerProView> {
                   opacity: _eqEnabled ? 1.0 : 0.3,
                   child: IgnorePointer(
                     ignoring: !_eqEnabled,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: params.bands
-                          .map(
-                            (band) => _buildVerticalFader(
-                              band,
-                              params,
-                              themeColor,
-                              theme,
-                            ),
-                          )
-                          .toList(),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: params.bands
+                            .map(
+                              (band) => SizedBox(
+                                width:
+                                    70, // ✨ Ancho fijo para proteger contra Overflow
+                                child: _buildVerticalFader(
+                                  band,
+                                  params,
+                                  themeColor,
+                                  theme,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
                     ),
                   ),
                 );
