@@ -69,10 +69,10 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
         decoration: BoxDecoration(
           color: theme.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(35),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.6),
+              color: Colors.black.withValues(alpha: 0.6),
               blurRadius: 40,
               offset: const Offset(0, 15),
             ),
@@ -87,7 +87,7 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
               height: 5,
               margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -98,7 +98,7 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.blueAccent.withOpacity(0.15),
+                    color: Colors.blueAccent.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -127,7 +127,7 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
               decoration: BoxDecoration(
                 color: theme.cardColor,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
               ),
               child: SystemVolumeSlider(
                 activeColor: Colors.blueAccent,
@@ -185,8 +185,9 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
                                   d.type == AudioDeviceType.builtInSpeaker;
 
                               IconData icon = Icons.speaker_rounded;
-                              if (isBluetooth)
+                              if (isBluetooth) {
                                 icon = Icons.bluetooth_audio_rounded;
+                              }
                               if (isWired) icon = Icons.headphones_rounded;
                               if (isSpeaker) icon = Icons.smartphone_rounded;
 
@@ -202,8 +203,9 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
                               }
 
                               String subtitulo = "Conexión interna";
-                              if (isBluetooth)
+                              if (isBluetooth) {
                                 subtitulo = "Conectado vía Bluetooth";
+                              }
                               if (isWired) subtitulo = "Conectado por cable";
 
                               return _buildDeviceTile(
@@ -224,7 +226,7 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent.withOpacity(0.15),
+                  backgroundColor: Colors.blueAccent.withValues(alpha: 0.15),
                   foregroundColor: Colors.blueAccent,
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
@@ -233,8 +235,9 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
                   elevation: 0,
                 ),
                 onPressed: () {
-                  if (AppState.enableHaptics.value)
+                  if (AppState.enableHaptics.value) {
                     HapticFeedback.selectionClick();
+                  }
 
                   AppSettings.openAppSettings(type: AppSettingsType.bluetooth);
                   Navigator.pop(context); // Cierra el panel
@@ -276,13 +279,13 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: isConnected
-                  ? Colors.blueAccent.withOpacity(0.2)
+                  ? Colors.blueAccent.withValues(alpha: 0.2)
                   : theme.cardColor,
               shape: BoxShape.circle,
               border: Border.all(
                 color: isConnected
-                    ? Colors.blueAccent.withOpacity(0.5)
-                    : Colors.white.withOpacity(0.05),
+                    ? Colors.blueAccent.withValues(alpha: 0.5)
+                    : Colors.white.withValues(alpha: 0.05),
               ),
             ),
             child: Icon(
@@ -303,7 +306,7 @@ class _BluetoothPanelState extends State<BluetoothPanel> {
             subtitle,
             style: TextStyle(
               color: isConnected
-                  ? Colors.blueAccent.withOpacity(0.8)
+                  ? Colors.blueAccent.withValues(alpha: 0.8)
                   : Colors.grey,
               fontSize: 12,
             ),

@@ -80,8 +80,8 @@ class FullPlayerModal extends StatelessWidget {
                 // ✨ CRISTAL ADAPTATIVO: Si el fondo de la portada es claro, los botones de fondo
                 // se vuelven negro transparente. Si es oscuro, blanco transparente. ¡Impecable legibilidad!
                 Color glassBtnColor = isLightColor
-                    ? Colors.black.withOpacity(0.08)
-                    : Colors.white.withOpacity(0.15);
+                    ? Colors.black.withValues(alpha: 0.08)
+                    : Colors.white.withValues(alpha: 0.15);
 
                 if (layoutMode == "Neo-Retro") {
                   bgColor = isLightMode
@@ -91,12 +91,12 @@ class FullPlayerModal extends StatelessWidget {
                   bgColor = const Color(0xFF121212);
                   textColor = Colors.white;
                   dynSecondaryText = Colors.white70;
-                  glassBtnColor = Colors.white.withOpacity(0.12);
+                  glassBtnColor = Colors.white.withValues(alpha: 0.12);
                 } else if (layoutMode == "Cyberpunk Neón") {
                   bgColor = const Color(0xFF09090B);
                   textColor = Colors.white;
                   dynSecondaryText = Colors.white54;
-                  glassBtnColor = safeThemeColor.withOpacity(0.15);
+                  glassBtnColor = safeThemeColor.withValues(alpha: 0.15);
                 }
 
                 return Scaffold(
@@ -148,11 +148,11 @@ class FullPlayerModal extends StatelessWidget {
                                           Positioned.fill(
                                             child: Container(
                                               color: isLightColor
-                                                  ? Colors.white.withOpacity(
-                                                      0.4,
+                                                  ? Colors.white.withValues(
+                                                      alpha: 0.4,
                                                     )
-                                                  : Colors.black.withOpacity(
-                                                      0.5,
+                                                  : Colors.black.withValues(
+                                                      alpha: 0.5,
                                                     ),
                                             ),
                                           ),
@@ -166,9 +166,9 @@ class FullPlayerModal extends StatelessWidget {
                                                     Colors.transparent,
                                                     isLightColor
                                                         ? Colors.white
-                                                              .withOpacity(0.9)
+                                                              .withValues(alpha: 0.9)
                                                         : Colors.black
-                                                              .withOpacity(0.9),
+                                                              .withValues(alpha: 0.9),
                                                   ],
                                                   stops: const [0.4, 1.0],
                                                 ),
@@ -194,6 +194,7 @@ class FullPlayerModal extends StatelessWidget {
                                 ),
 
                               SafeArea(
+                                bottom: false, // ✨ Permitir diseño Edge-to-Edge en el reproductor completo
                                 child: Column(
                                   children: [
                                     Padding(
@@ -237,7 +238,7 @@ class FullPlayerModal extends StatelessWidget {
                                                       ),
                                                   decoration: BoxDecoration(
                                                     color: Colors.red
-                                                        .withOpacity(0.2),
+                                                        .withValues(alpha: 0.2),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                           20,
@@ -321,9 +322,9 @@ class FullPlayerModal extends StatelessWidget {
                                                     .activeEngine
                                                     .value !=
                                                 AudioEngineType.radio) {
-                                              if (details.primaryVelocity! < 0)
+                                              if (details.primaryVelocity! < 0) {
                                                 PlayerManager.playNext();
-                                              else if (details
+                                              } else if (details
                                                       .primaryVelocity! >
                                                   0)
                                                 PlayerManager.playPrevious();
@@ -380,24 +381,24 @@ class FullPlayerModal extends StatelessWidget {
                                                 );
                                               } else if (layoutMode ==
                                                   "Minimalista Zen") {
-                                                artwork = Container(
+                                                artwork = AnimatedContainer(
+                                                  duration: const Duration(milliseconds: 400),
+                                                  curve: Curves.easeOut,
                                                   decoration: BoxDecoration(
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                           40,
                                                         ),
-                                                    boxShadow: [
+                                                    boxShadow: playing ? [
                                                       BoxShadow(
-                                                        color: isLightMode
-                                                            ? Colors.black12
-                                                            : Colors.black54,
+                                                        color: themeColor.withValues(alpha: 0.4),
                                                         blurRadius: 25,
                                                         offset: const Offset(
                                                           0,
                                                           15,
                                                         ),
                                                       ),
-                                                    ],
+                                                    ] : [],
                                                   ),
                                                   child: ClipRRect(
                                                     borderRadius:
@@ -408,19 +409,20 @@ class FullPlayerModal extends StatelessWidget {
                                                   ),
                                                 );
                                               } else {
-                                                artwork = Container(
+                                                artwork = AnimatedContainer(
+                                                  duration: const Duration(milliseconds: 400),
+                                                  curve: Curves.easeOut,
                                                   decoration: BoxDecoration(
-                                                    boxShadow: [
+                                                    boxShadow: playing ? [
                                                       BoxShadow(
-                                                        color: Colors.black
-                                                            .withOpacity(0.35),
+                                                        color: themeColor.withValues(alpha: 0.5),
                                                         blurRadius: 35,
                                                         offset: const Offset(
                                                           0,
                                                           15,
                                                         ),
                                                       ),
-                                                    ],
+                                                    ] : [],
                                                   ),
                                                   child: ClipRRect(
                                                     borderRadius:
@@ -433,11 +435,11 @@ class FullPlayerModal extends StatelessWidget {
                                               }
 
                                               return AnimatedScale(
-                                                scale: playing ? 1.0 : 0.90,
+                                                scale: playing ? 1.0 : 0.85,
                                                 duration: const Duration(
-                                                  milliseconds: 500,
+                                                  milliseconds: 400,
                                                 ),
-                                                curve: Curves.easeOutCubic,
+                                                curve: Curves.easeOut,
                                                 child: Hero(
                                                   tag: 'cover_active',
                                                   child: Padding(
@@ -457,11 +459,11 @@ class FullPlayerModal extends StatelessWidget {
 
                                     // 🎛️ CONTROLES BOTTOM DE CRISTAL ADAPTATIVOS
                                     Padding(
-                                      padding: const EdgeInsets.fromLTRB(
+                                      padding: EdgeInsets.fromLTRB(
                                         30,
                                         0,
                                         30,
-                                        40,
+                                        MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom + 20 : 40,
                                       ),
                                       child: ValueListenableBuilder<AudioEngineType>(
                                         valueListenable:
@@ -655,8 +657,9 @@ class FullPlayerModal extends StatelessWidget {
                                                           onTap: () async {
                                                             if (AppState
                                                                 .enableHaptics
-                                                                .value)
+                                                                .value) {
                                                               HapticFeedback.lightImpact();
+                                                            }
                                                             // ✨ LANZAMOS LA PANTALLA DE LETRAS REAL (CON LA API)
                                                             Navigator.push(
                                                               context,
@@ -701,8 +704,9 @@ class FullPlayerModal extends StatelessWidget {
                                                         onTap: () {
                                                           if (AppState
                                                               .enableHaptics
-                                                              .value)
+                                                              .value) {
                                                             HapticFeedback.lightImpact();
+                                                          }
                                                           // ✨ AHORA NAVEGA A LA PANTALLA COMPLETA
                                                           Navigator.push(
                                                             context,
@@ -771,8 +775,8 @@ class FullPlayerModal extends StatelessWidget {
                                                                           : safeThemeColor),
                                                                 inactiveTrackColor:
                                                                     activeTextColor
-                                                                        .withOpacity(
-                                                                          0.15,
+                                                                        .withValues(
+                                                                          alpha: 0.15,
                                                                         ),
                                                               ),
                                                               child: Slider(
@@ -882,8 +886,9 @@ class FullPlayerModal extends StatelessWidget {
                                                               PlayerManager.toggleShuffle();
                                                               if (AppState
                                                                   .enableHaptics
-                                                                  .value)
+                                                                  .value) {
                                                                 HapticFeedback.lightImpact();
+                                                              }
                                                             },
                                                             child: Icon(
                                                               Icons
@@ -906,8 +911,9 @@ class FullPlayerModal extends StatelessWidget {
                                                             PlayerManager.playPrevious();
                                                             if (AppState
                                                                 .enableHaptics
-                                                                .value)
+                                                                .value) {
                                                               HapticFeedback.lightImpact();
+                                                            }
                                                           },
                                                           child: Icon(
                                                             Icons
@@ -928,8 +934,9 @@ class FullPlayerModal extends StatelessWidget {
                                                           onTap: () {
                                                             if (AppState
                                                                 .enableHaptics
-                                                                .value)
+                                                                .value) {
                                                               HapticFeedback.heavyImpact();
+                                                            }
                                                             PlayerManager.togglePlay();
                                                           },
                                                           child: AnimatedContainer(
@@ -964,7 +971,7 @@ class FullPlayerModal extends StatelessWidget {
                                                                                         "Minimalista Zen"
                                                                                     ? textColor
                                                                                     : safeThemeColor)
-                                                                                .withOpacity(0.4),
+                                                                                .withValues(alpha: 0.4),
                                                                         blurRadius:
                                                                             25,
                                                                         spreadRadius:
@@ -1002,8 +1009,9 @@ class FullPlayerModal extends StatelessWidget {
                                                             PlayerManager.playNext();
                                                             if (AppState
                                                                 .enableHaptics
-                                                                .value)
+                                                                .value) {
                                                               HapticFeedback.lightImpact();
+                                                            }
                                                           },
                                                           child: Icon(
                                                             Icons
@@ -1030,8 +1038,9 @@ class FullPlayerModal extends StatelessWidget {
                                                                   3;
                                                               if (AppState
                                                                   .enableHaptics
-                                                                  .value)
+                                                                  .value) {
                                                                 HapticFeedback.lightImpact();
+                                                              }
                                                             },
                                                             child: Icon(
                                                               repeat == 0
@@ -1063,7 +1072,7 @@ class FullPlayerModal extends StatelessWidget {
                                                             "Minimalista Zen"
                                                         ? textColor
                                                         : safeThemeColor
-                                                              .withOpacity(0.8),
+                                                              .withValues(alpha: 0.8),
                                                     textColor: activeTextColor,
                                                   ),
                                                 ],
@@ -1101,10 +1110,12 @@ class GridPainter extends CustomPainter {
     var paint = Paint()
       ..color = color
       ..strokeWidth = 1;
-    for (double i = 0; i < size.width; i += 30)
+    for (double i = 0; i < size.width; i += 30) {
       canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
-    for (double i = 0; i < size.height; i += 30)
+    }
+    for (double i = 0; i < size.height; i += 30) {
       canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    }
   }
 
   @override
@@ -1112,12 +1123,20 @@ class GridPainter extends CustomPainter {
 }
 
 // --- 8. MINI REPRODUCTOR FLOTANTE (VERSIÓN PREMIUM GLASSMORPHISM) ---
-class FloatingMiniPlayer extends StatelessWidget {
+class FloatingMiniPlayer extends StatefulWidget {
   const FloatingMiniPlayer({super.key});
+
+  @override
+  State<FloatingMiniPlayer> createState() => _FloatingMiniPlayerState();
+}
+
+class _FloatingMiniPlayerState extends State<FloatingMiniPlayer> {
+  bool _isPressed = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return ValueListenableBuilder<String>(
       valueListenable: PlayerManager.currentTitle,
@@ -1130,48 +1149,82 @@ class FloatingMiniPlayer extends StatelessWidget {
             final isLightMode =
                 Theme.of(context).brightness == Brightness.light;
             final glassColor = isLightMode
-                ? Colors.white.withOpacity(0.85)
-                : const Color(0xFF141416).withOpacity(0.85);
+                ? Colors.white
+                : const Color(0xFF141416);
 
             return GestureDetector(
-              onTap: () => showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (c) => const FullPlayerModal(),
-              ),
+              onTapDown: (_) {
+                HapticFeedback.lightImpact();
+                setState(() => _isPressed = true);
+              },
+              onTapUp: (_) {
+                setState(() => _isPressed = false);
+                HapticFeedback.mediumImpact();
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (c) => const FullPlayerModal(),
+                );
+              },
+              onTapCancel: () => setState(() => _isPressed = false),
               onHorizontalDragEnd: (details) {
                 if (PlayerManager.activeEngine.value != AudioEngineType.radio) {
-                  if (details.primaryVelocity! < 0)
+                  if (details.primaryVelocity! < 0) {
                     PlayerManager.playNext();
-                  else if (details.primaryVelocity! > 0)
+                  } else if (details.primaryVelocity! > 0)
                     PlayerManager.playPrevious();
                 }
               },
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(15, 0, 15, 10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(22),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
-                      blurRadius: 15,
-                      offset: const Offset(0, 8),
-                    ),
-                    BoxShadow(
-                      color: themeColor.withOpacity(0.15),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(22),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                    child: Container(
-                      color: glassColor,
+              child: AnimatedScale(
+                scale: _isPressed ? 0.96 : 1.0,
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeOutCubic,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutCubic,
+                  margin: EdgeInsets.fromLTRB(
+                    15,
+                    0,
+                    15,
+                    bottomPadding > 0 ? bottomPadding + 10 : 20,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 25,
+                        offset: const Offset(0, 12),
+                      ),
+                      BoxShadow(
+                        color: themeColor.withValues(alpha: 0.25),
+                        blurRadius: 20,
+                        spreadRadius: -2,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              glassColor.withValues(alpha: isLightMode ? 0.75 : 0.45),
+                              glassColor.withValues(alpha: isLightMode ? 0.5 : 0.2),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: Colors.white
+                                .withValues(alpha: isLightMode ? 0.3 : 0.08),
+                            width: 1.2,
+                          ),
+                        ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -1252,7 +1305,7 @@ class FloatingMiniPlayer extends StatelessWidget {
                                 ),
                                 AnimatedPress(
                                   onTap: () {
-                                    HapticFeedback.lightImpact();
+                                    HapticFeedback.selectionClick();
                                     BluetoothPanel.show(context);
                                   },
                                   child: Padding(
@@ -1269,11 +1322,14 @@ class FloatingMiniPlayer extends StatelessWidget {
                                 ValueListenableBuilder<bool>(
                                   valueListenable: PlayerManager.isPlaying,
                                   builder: (c, playing, _) => AnimatedPress(
-                                    onTap: PlayerManager.togglePlay,
+                                    onTap: () {
+                                      HapticFeedback.mediumImpact();
+                                      PlayerManager.togglePlay();
+                                    },
                                     child: Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: themeColor.withOpacity(0.15),
+                                        color: themeColor.withValues(alpha: 0.15),
                                         shape: BoxShape.circle,
                                       ),
                                       child: Icon(
@@ -1308,7 +1364,7 @@ class FloatingMiniPlayer extends StatelessWidget {
                                 width: double.infinity,
                                 alignment: Alignment.centerLeft,
                                 decoration: BoxDecoration(
-                                  color: themeColor.withOpacity(0.1),
+                                  color: themeColor.withValues(alpha: 0.1),
                                 ),
                                 child: FractionallySizedBox(
                                   widthFactor:
@@ -1317,7 +1373,8 @@ class FloatingMiniPlayer extends StatelessWidget {
                                       ? 1.0
                                       : progress,
                                   child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.linearToEaseOut,
                                     decoration: BoxDecoration(
                                       color:
                                           PlayerManager.activeEngine.value ==
@@ -1333,7 +1390,7 @@ class FloatingMiniPlayer extends StatelessWidget {
                                                           AudioEngineType.radio
                                                       ? Colors.red
                                                       : themeColor)
-                                                  .withOpacity(0.6),
+                                                  .withValues(alpha: 0.6),
                                           blurRadius: 4,
                                         ),
                                       ],
@@ -1404,13 +1461,14 @@ class _LyricsProViewState extends State<LyricsProView> {
         final sec = int.parse(match.group(2)!);
         final ms = int.parse(match.group(3)!.padRight(3, '0'));
         final texto = match.group(4)!.trim();
-        if (texto.isNotEmpty)
+        if (texto.isNotEmpty) {
           _lineasSincronizadas.add(
             LrcLine(
               time: Duration(minutes: min, seconds: sec, milliseconds: ms),
               text: texto,
             ),
           );
+        }
       }
     }
     if (_lineasSincronizadas.isNotEmpty) {
@@ -1597,19 +1655,20 @@ class _AudioRouteSheetState extends State<AudioRouteSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeColor = PlayerManager.currentThemeColor.value;
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
     return Container(
       decoration: BoxDecoration(
-        color: theme.cardColor.withOpacity(0.98),
+        color: theme.cardColor.withValues(alpha: 0.98),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             blurRadius: 30,
             offset: const Offset(0, -10),
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(25, 15, 25, 40),
+      padding: EdgeInsets.fromLTRB(25, 15, 25, bottomPadding > 0 ? bottomPadding + 20 : 40),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1619,7 +1678,7 @@ class _AudioRouteSheetState extends State<AudioRouteSheet> {
               width: 50,
               height: 5,
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
@@ -1665,7 +1724,7 @@ class _AudioRouteSheetState extends State<AudioRouteSheet> {
                                 leading: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: themeColor.withOpacity(0.1),
+                                    color: themeColor.withValues(alpha: 0.1),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
@@ -1696,8 +1755,9 @@ class _AudioRouteSheetState extends State<AudioRouteSheet> {
                                   d.type == AudioDeviceType.builtInSpeaker;
 
                               IconData icon = Icons.speaker_rounded;
-                              if (isBluetooth)
+                              if (isBluetooth) {
                                 icon = Icons.bluetooth_audio_rounded;
+                              }
                               if (isWired) icon = Icons.headphones_rounded;
                               if (isSpeaker) icon = Icons.smartphone_rounded;
 
@@ -1713,15 +1773,16 @@ class _AudioRouteSheetState extends State<AudioRouteSheet> {
                               }
 
                               String subtitulo = "Conexión interna";
-                              if (isBluetooth)
+                              if (isBluetooth) {
                                 subtitulo = "Conectado vía Bluetooth";
+                              }
                               if (isWired) subtitulo = "Conectado por cable";
 
                               return ListTile(
                                 leading: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: themeColor.withOpacity(0.1),
+                                    color: themeColor.withValues(alpha: 0.1),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(icon, color: themeColor),
@@ -1752,7 +1813,7 @@ class _AudioRouteSheetState extends State<AudioRouteSheet> {
             height: 60,
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: themeColor.withOpacity(0.1),
+                backgroundColor: themeColor.withValues(alpha: 0.1),
                 foregroundColor: themeColor,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -1788,16 +1849,25 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeColor = PlayerManager.currentThemeColor.value;
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.75,
-      decoration: BoxDecoration(
-        color: theme.cardColor.withOpacity(0.95),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 15),
-          Container(
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
+    return DraggableScrollableSheet(
+      initialChildSize: 0.75,
+      minChildSize: 0.40,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) {
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            child: Container(
+              decoration: BoxDecoration(
+                color: theme.cardColor.withValues(alpha: 0.55), // ✨ Efecto Glassmorphism transparente
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 15),
+                  Container(
             width: 40,
             height: 5,
             decoration: BoxDecoration(
@@ -1821,7 +1891,7 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
                 ValueListenableBuilder<AudioEngineType>(
                   valueListenable: PlayerManager.activeEngine,
                   builder: (context, engine, _) {
-                    if (engine == AudioEngineType.local)
+                    if (engine == AudioEngineType.local) {
                       return Text(
                         "${PlayerManager.playbackQueue.length} pistas",
                         style: const TextStyle(
@@ -1829,6 +1899,7 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
                           fontWeight: FontWeight.bold,
                         ),
                       );
+                    }
                     return const SizedBox.shrink();
                   },
                 ),
@@ -1897,18 +1968,21 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
                     ),
                   );
                 }
-                if (PlayerManager.playbackQueue.isEmpty)
+                if (PlayerManager.playbackQueue.isEmpty) {
                   return const Center(
                     child: Text(
                       "La cola está vacía",
                       style: TextStyle(color: Colors.grey),
                     ),
                   );
+                }
                 return ReorderableListView.builder(
+                  scrollController: scrollController, // ✨ Sincroniza la lista con el DraggableScrollableSheet
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(bottom: 100),
+                  padding: EdgeInsets.only(bottom: 100 + bottomPadding), // ✨ Flujo Edge-to-Edge y evita tapar el último item
                   itemCount: PlayerManager.playbackQueue.length,
                   onReorder: (oldIndex, newIndex) {
+                    HapticFeedback.lightImpact(); // ✨ Respuesta táctil premium al arrastrar
                     setState(() {
                       PlayerManager.reorderQueue(oldIndex, newIndex);
                     });
@@ -1959,7 +2033,11 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
             ),
           ),
         ],
-      ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -1983,7 +2061,7 @@ class _EqualizerProViewState extends State<EqualizerProView> {
   Future<void> _checkEqStatus() async {
     if (!Platform.isAndroid) return;
     try {
-      final enabled = await PlayerManager.equalizer.enabled;
+      final enabled = PlayerManager.equalizer.enabled;
       if (mounted) setState(() => _eqEnabled = enabled);
     } catch (e) {
       debugPrint("Hardware no soportado.");
@@ -1994,20 +2072,21 @@ class _EqualizerProViewState extends State<EqualizerProView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeColor = PlayerManager.currentThemeColor.value;
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
     return Container(
       height: MediaQuery.of(context).size.height * 0.65,
       decoration: BoxDecoration(
-        color: theme.cardColor.withOpacity(0.98),
+        color: theme.cardColor.withValues(alpha: 0.98),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             blurRadius: 30,
             offset: const Offset(0, -10),
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(25, 15, 25, 20),
+      padding: EdgeInsets.fromLTRB(25, 15, 25, bottomPadding > 0 ? bottomPadding + 10 : 20),
       child: Column(
         children: [
           Container(
@@ -2045,7 +2124,7 @@ class _EqualizerProViewState extends State<EqualizerProView> {
               ),
               Switch(
                 value: _eqEnabled,
-                activeColor: themeColor,
+                activeThumbColor: themeColor,
                 onChanged: (v) async {
                   try {
                     await PlayerManager.equalizer.setEnabled(v);
@@ -2077,12 +2156,9 @@ class _EqualizerProViewState extends State<EqualizerProView> {
                 ),
               ),
               Expanded(
-                child: Slider(
+                child: _PremiumHorizontalFader(
                   value: _loudness,
-                  min: 0,
-                  max: 2000,
-                  activeColor: themeColor,
-                  inactiveColor: Colors.white10,
+                  themeColor: themeColor,
                   onChanged: (v) {
                     setState(() => _loudness = v);
                     try {
@@ -2099,9 +2175,10 @@ class _EqualizerProViewState extends State<EqualizerProView> {
             child: FutureBuilder<AndroidEqualizerParameters>(
               future: PlayerManager.equalizer.parameters,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting)
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
-                if (snapshot.hasError || !snapshot.hasData)
+                }
+                if (snapshot.hasError || !snapshot.hasData) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -2122,6 +2199,7 @@ class _EqualizerProViewState extends State<EqualizerProView> {
                       ],
                     ),
                   );
+                }
                 final params = snapshot.data!;
                 return Opacity(
                   opacity: _eqEnabled ? 1.0 : 0.3,
@@ -2137,11 +2215,10 @@ class _EqualizerProViewState extends State<EqualizerProView> {
                               (band) => SizedBox(
                                 width:
                                     70, // ✨ Ancho fijo para proteger contra Overflow
-                                child: _buildVerticalFader(
-                                  band,
-                                  params,
-                                  themeColor,
-                                  theme,
+                                child: _VerticalEqFader(
+                                  band: band,
+                                  params: params,
+                                  themeColor: themeColor,
                                 ),
                               ),
                             )
@@ -2157,48 +2234,78 @@ class _EqualizerProViewState extends State<EqualizerProView> {
       ),
     );
   }
+}
 
-  Widget _buildVerticalFader(
-    AndroidEqualizerBand band,
-    AndroidEqualizerParameters params,
-    Color themeColor,
-    ThemeData theme,
-  ) {
+// ✨ NUEVO: COMPONENTE DE FADER VERTICAL REACTIVO E INMERSIVO
+class _VerticalEqFader extends StatefulWidget {
+  final AndroidEqualizerBand band;
+  final AndroidEqualizerParameters params;
+  final Color themeColor;
+
+  const _VerticalEqFader({
+    required this.band,
+    required this.params,
+    required this.themeColor,
+  });
+
+  @override
+  State<_VerticalEqFader> createState() => _VerticalEqFaderState();
+}
+
+class _VerticalEqFaderState extends State<_VerticalEqFader> {
+  bool _isDragging = false;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(
-          "${(band.centerFrequency / 1000).toStringAsFixed(0)}k",
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 12,
+        AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 300),
+          style: TextStyle(
+            color: _isDragging ? widget.themeColor : Colors.grey,
+            fontSize: _isDragging ? 14 : 12,
             fontWeight: FontWeight.bold,
           ),
+          child: Text("${(widget.band.centerFrequency / 1000).toStringAsFixed(0)}k"),
         ),
         const SizedBox(height: 10),
         Expanded(
           child: RotatedBox(
             quarterTurns: 3,
             child: StreamBuilder<double>(
-              stream: band.gainStream,
+              stream: widget.band.gainStream,
               builder: (context, snapshot) {
                 final currentGain = snapshot.data ?? 0.0;
-                return SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 6,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 10,
+                return AnimatedScale(
+                  scale: _isDragging ? 1.05 : 1.0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: _isDragging ? 8 : 4,
+                      thumbShape: RoundSliderThumbShape(
+                        enabledThumbRadius: _isDragging ? 14 : 10,
+                      ),
+                      overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
                     ),
-                  ),
-                  child: Slider(
-                    value: currentGain,
-                    min: params.minDecibels,
-                    max: params.maxDecibels,
-                    activeColor: themeColor,
-                    inactiveColor: Colors.white10,
-                    onChanged: (v) {
-                      band.setGain(v);
-                      HapticFeedback.selectionClick();
-                    },
+                    child: Slider(
+                      value: currentGain,
+                      min: widget.params.minDecibels,
+                      max: widget.params.maxDecibels,
+                      activeColor: widget.themeColor,
+                      inactiveColor: Colors.white10,
+                      onChangeStart: (_) {
+                        HapticFeedback.lightImpact();
+                        setState(() => _isDragging = true);
+                      },
+                      onChanged: (v) {
+                        widget.band.setGain(v);
+                      },
+                      onChangeEnd: (_) {
+                        HapticFeedback.mediumImpact();
+                        setState(() => _isDragging = false);
+                      },
+                    ),
                   ),
                 );
               },
@@ -2206,8 +2313,68 @@ class _EqualizerProViewState extends State<EqualizerProView> {
           ),
         ),
         const SizedBox(height: 10),
-        const Text("Hz", style: TextStyle(color: Colors.white24, fontSize: 10)),
+        AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 300),
+          style: TextStyle(
+            color: _isDragging ? widget.themeColor.withValues(alpha: 0.5) : Colors.white24,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+          child: const Text("Hz"),
+        ),
       ],
+    );
+  }
+}
+
+// ✨ NUEVO: COMPONENTE HORIZONTAL PREMIUM PARA LOUDNESS
+class _PremiumHorizontalFader extends StatefulWidget {
+  final double value;
+  final Color themeColor;
+  final ValueChanged<double> onChanged;
+
+  const _PremiumHorizontalFader({
+    required this.value,
+    required this.themeColor,
+    required this.onChanged,
+  });
+
+  @override
+  State<_PremiumHorizontalFader> createState() => _PremiumHorizontalFaderState();
+}
+
+class _PremiumHorizontalFaderState extends State<_PremiumHorizontalFader> {
+  bool _isDragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedScale(
+      scale: _isDragging ? 1.02 : 1.0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      child: SliderTheme(
+        data: SliderTheme.of(context).copyWith(
+          trackHeight: _isDragging ? 8 : 4,
+          thumbShape: RoundSliderThumbShape(enabledThumbRadius: _isDragging ? 14 : 10),
+          overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
+        ),
+        child: Slider(
+          value: widget.value,
+          min: 0,
+          max: 2000,
+          activeColor: widget.themeColor,
+          inactiveColor: Colors.white10,
+          onChangeStart: (_) {
+            HapticFeedback.lightImpact();
+            setState(() => _isDragging = true);
+          },
+          onChanged: widget.onChanged,
+          onChangeEnd: (_) {
+            HapticFeedback.mediumImpact();
+            setState(() => _isDragging = false);
+          },
+        ),
+      ),
     );
   }
 }
@@ -2242,8 +2409,9 @@ class LyricsVault {
   ) async {
     try {
       if (lyricsData.contains("No se encontró") ||
-          lyricsData.contains("Buscando..."))
+          lyricsData.contains("Buscando...")) {
         return;
+      }
       final file = await _getFileRef(title, artist);
       await file.writeAsString(lyricsData);
     } catch (e) {
@@ -2257,8 +2425,9 @@ class LyricsEngine {
   static Future<String> buscarCancion(String title, String artist) async {
     final localLyrics = await LyricsVault.readLyrics(title, artist);
     if (localLyrics != null) return localLyrics;
-    if (!NetworkRadar.isOnline.value)
+    if (!NetworkRadar.isOnline.value) {
       return "[00:00.00] 🚫 Modo Sin Conexión\n[00:05.00] No se encontró en la bóveda local.";
+    }
 
     final cleanTitle = _cleanTitle(title);
     final encodedTitle = Uri.encodeComponent(cleanTitle);
@@ -2338,7 +2507,7 @@ class _SystemVolumeSliderState extends State<SystemVolumeSlider> {
       children: [
         Icon(
           Icons.volume_mute_rounded,
-          color: widget.textColor.withOpacity(0.5),
+          color: widget.textColor.withValues(alpha: 0.5),
           size: 20,
         ),
         const SizedBox(width: 10),
@@ -2349,7 +2518,7 @@ class _SystemVolumeSliderState extends State<SystemVolumeSlider> {
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
               overlayShape: SliderComponentShape.noOverlay,
               activeTrackColor: widget.activeColor,
-              inactiveTrackColor: widget.textColor.withOpacity(0.15),
+              inactiveTrackColor: widget.textColor.withValues(alpha: 0.15),
               thumbColor: widget.activeColor,
             ),
             child: Slider(
@@ -2372,7 +2541,7 @@ class _SystemVolumeSliderState extends State<SystemVolumeSlider> {
         const SizedBox(width: 10),
         Icon(
           Icons.volume_up_rounded,
-          color: widget.textColor.withOpacity(0.5),
+          color: widget.textColor.withValues(alpha: 0.5),
           size: 20,
         ),
       ],

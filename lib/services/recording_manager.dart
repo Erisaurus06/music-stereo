@@ -18,8 +18,9 @@ class RecordingManager {
 
   static Future<void> startRecording() async {
     if (PlayerManager.activeEngine.value != AudioEngineType.radio ||
-        currentRadioUrl == null)
+        currentRadioUrl == null) {
       return;
+    }
     try {
       Directory? baseDir;
       if (Platform.isAndroid) {

@@ -124,10 +124,11 @@ class AppState {
 
   static void toggleFavorite(String songId) {
     final list = List<String>.from(favoriteSongs.value);
-    if (list.contains(songId))
+    if (list.contains(songId)) {
       list.remove(songId);
-    else
+    } else {
       list.add(songId);
+    }
     favoriteSongs.value = list;
     _prefs.setStringList('favorites', list);
     sincronizarConNube();

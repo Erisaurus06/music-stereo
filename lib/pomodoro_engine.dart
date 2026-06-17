@@ -241,6 +241,22 @@ class PomodoroEngine {
     await _notificationsPlugin.show(uniqueId, title, body, platformDetails);
   }
 
+  // ✨ FIX: Recuperación instantánea del temporizador al volver a primer plano
+  static void checkBackgroundState() {
+    if (currentState.value != PomodoroState.idle && _targetTime != null) {
+      final now = DateTime.now();
+      final diff = _targetTime!.difference(now).inSeconds;
+
+      if (diff <= 0) {
+        _timer?.cancel();
+        _switchPhase(); // El tiempo expiró mientras la app estaba suspendida
+      } else {
+        secondsRemaining.value =
+            diff; // Actualiza la UI inmediatamente sin esperar 1 seg
+      }
+    }
+  }
+
   static void stopTimer() {
     _timer?.cancel();
     _targetTime = null; // Limpiamos la memoria

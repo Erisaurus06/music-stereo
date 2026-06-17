@@ -90,7 +90,7 @@ class _MainNavigationState extends State<MainNavigation> {
                           colors: [
                             theme.scaffoldBackgroundColor,
                             Color.alphaBlend(
-                              themeColor.withOpacity(0.15),
+                              themeColor.withValues(alpha: 0.15),
                               theme.scaffoldBackgroundColor,
                             ),
                           ],
@@ -106,9 +106,9 @@ class _MainNavigationState extends State<MainNavigation> {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 800),
                         color: Color.alphaBlend(
-                          themeColor.withOpacity(0.3),
-                          Colors.black.withOpacity(
-                            0.75,
+                          themeColor.withValues(alpha: 0.3),
+                          Colors.black.withValues(
+                            alpha: 0.75,
                           ), // ✨ Aumentamos contraste para mejor legibilidad
                         ),
                       ),
@@ -158,7 +158,7 @@ class _MainNavigationState extends State<MainNavigation> {
               borderRadius: BorderRadius.circular(35),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -178,15 +178,15 @@ class _MainNavigationState extends State<MainNavigation> {
                   decoration: BoxDecoration(
                     color: AppState.backgroundImagePath.value != null
                         ? (isLightMode
-                              ? Colors.white.withOpacity(0.15)
-                              : Colors.black.withOpacity(0.3))
+                              ? Colors.white.withValues(alpha: 0.15)
+                              : Colors.black.withValues(alpha: 0.3))
                         : theme.cardColor,
                     border: Border.all(
                       color: AppState.backgroundImagePath.value != null
-                          ? Colors.white.withOpacity(
-                              0.25,
+                          ? Colors.white.withValues(
+                              alpha: 0.25,
                             ) // ✨ Efecto de vidrio (Glassmorphism)
-                          : Colors.white.withOpacity(0.05),
+                          : Colors.white.withValues(alpha: 0.05),
                     ),
                   ),
                   child: Row(
@@ -253,7 +253,9 @@ class _MainNavigationState extends State<MainNavigation> {
           vertical: 10,
         ),
         decoration: BoxDecoration(
-          color: isSelected ? themeColor.withOpacity(0.15) : Colors.transparent,
+          color: isSelected
+              ? themeColor.withValues(alpha: 0.15)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -300,8 +302,9 @@ class _MainNavigationState extends State<MainNavigation> {
         return ValueListenableBuilder<AudioEngineType>(
           valueListenable: PlayerManager.activeEngine,
           builder: (context, activeEngine, _) {
-            if (activeEngine == AudioEngineType.none)
+            if (activeEngine == AudioEngineType.none) {
               return const SizedBox.shrink();
+            }
 
             return Positioned(
               bottom: 10,
@@ -331,7 +334,7 @@ class _MainNavigationState extends State<MainNavigation> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withValues(alpha: 0.3),
                             blurRadius: 15,
                             offset: const Offset(0, 5),
                           ),
@@ -353,14 +356,14 @@ class _MainNavigationState extends State<MainNavigation> {
                             decoration: BoxDecoration(
                               color: AppState.backgroundImagePath.value != null
                                   ? (theme.brightness == Brightness.light
-                                        ? Colors.white.withOpacity(0.15)
-                                        : Colors.black.withOpacity(0.3))
-                                  : themeColor.withOpacity(0.95),
+                                        ? Colors.white.withValues(alpha: 0.15)
+                                        : Colors.black.withValues(alpha: 0.3))
+                                  : themeColor.withValues(alpha: 0.95),
                               border: Border.all(
                                 color:
                                     AppState.backgroundImagePath.value != null
-                                    ? Colors.white.withOpacity(0.25)
-                                    : Colors.white.withOpacity(0.1),
+                                    ? Colors.white.withValues(alpha: 0.25)
+                                    : Colors.white.withValues(alpha: 0.1),
                               ),
                             ),
                             child: Row(
@@ -434,8 +437,8 @@ class _MainNavigationState extends State<MainNavigation> {
                                                         .value !=
                                                     null
                                                 ? Colors.white70
-                                                : contrastColor.withOpacity(
-                                                    0.7,
+                                                : contrastColor.withValues(
+                                                    alpha: 0.7,
                                                   ),
                                           ),
                                         ),

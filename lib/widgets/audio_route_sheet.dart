@@ -13,9 +13,11 @@ class AudioRouteSheet extends StatelessWidget {
       height: 280,
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor.withOpacity(0.95),
+        color: Theme.of(
+          context,
+        ).scaffoldBackgroundColor.withValues(alpha: 0.95),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(35)),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
         children: [

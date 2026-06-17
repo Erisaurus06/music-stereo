@@ -107,7 +107,7 @@ class HybridArtworkWidget extends StatelessWidget {
               ? ArtworkEngine.buscarPortada(title, artist)
               : Future.value(null),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting)
+            if (snapshot.connectionState == ConnectionState.waiting) {
               return Container(
                 color: Colors.blueGrey.shade900,
                 child: const Center(
@@ -117,6 +117,7 @@ class HybridArtworkWidget extends StatelessWidget {
                   ),
                 ),
               );
+            }
             if (snapshot.hasData && snapshot.data != null) {
               return AnimatedOpacity(
                 opacity: 1.0,
@@ -124,12 +125,18 @@ class HybridArtworkWidget extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: snapshot.data!,
                   fit: BoxFit.cover,
-                  placeholder: (c, u) =>
-                      Container(color: Colors.blueGrey.shade900),
-                  errorWidget: (c, u, e) => Icon(
-                    Icons.music_note,
-                    color: Colors.white24,
-                    size: isFullSize ? 100.0 : 30.0,
+                  memCacheWidth: isFullSize ? 800 : 150, // ✨ Control de RAM
+                  memCacheHeight: isFullSize ? 800 : 150,
+                  placeholder: (c, u) => const ShimmerPlaceholder(),
+                  errorWidget: (c, u, e) => Container(
+                    color: const Color(0xFF141416), // ✨ Fondo oscuro minimalista
+                    child: Center(
+                      child: Icon(
+                        Icons.music_note_rounded,
+                        color: Colors.grey.withValues(alpha: 0.5),
+                        size: isFullSize ? 80.0 : 24.0,
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -154,12 +161,13 @@ class HybridArtworkWidget extends StatelessWidget {
           dimension: ImageDimension.large,
         ),
         builder: (context, snapshot) {
-          if (snapshot.hasData)
+          if (snapshot.hasData) {
             return AnimatedOpacity(
               opacity: 1.0,
               duration: const Duration(milliseconds: 300),
               child: Image.memory(snapshot.data!, fit: BoxFit.cover),
             );
+          }
           return Container(
             color: Colors.black,
             child: const Center(
@@ -174,21 +182,17 @@ class HybridArtworkWidget extends StatelessWidget {
       return CachedNetworkImage(
         imageUrl: artworkData,
         fit: BoxFit.cover,
-        placeholder: (context, url) => Container(
-          color: Colors.blueGrey.shade900,
-          child: const Center(
-            child: CircularProgressIndicator(
-              color: Colors.white24,
-              strokeWidth: 2,
-            ),
-          ),
-        ),
+        memCacheWidth: isFullSize ? 800 : 150, // ✨ Control de RAM
+        memCacheHeight: isFullSize ? 800 : 150,
+        placeholder: (context, url) => const ShimmerPlaceholder(),
         errorWidget: (context, url, error) => Container(
-          color: Colors.blueGrey.shade900,
-          child: Icon(
-            Icons.radio_rounded,
-            color: Colors.white24,
-            size: isFullSize ? 100.0 : 30.0,
+          color: const Color(0xFF141416),
+          child: Center(
+            child: Icon(
+              Icons.music_note_rounded,
+              color: Colors.grey.withValues(alpha: 0.5),
+              size: isFullSize ? 80.0 : 24.0,
+            ),
           ),
         ),
       );
@@ -201,6 +205,60 @@ class HybridArtworkWidget extends StatelessWidget {
         color: Colors.white24,
         size: isFullSize ? 100.0 : 30.0,
       ),
+    );
+  }
+}
+
+// ✨ WIDGET UTILITARIO: SHIMMER PLACEHOLDER PARA IMÁGENES
+class ShimmerPlaceholder extends StatefulWidget {
+  const ShimmerPlaceholder({super.key});
+
+  @override
+  State<ShimmerPlaceholder> createState() => _ShimmerPlaceholderState();
+}
+
+class _ShimmerPlaceholderState extends State<ShimmerPlaceholder>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.white24 : Colors.black12;
+    final highlightColor = isDark ? Colors.white70 : Colors.black26;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return ShaderMask(
+          blendMode: BlendMode.srcATop,
+          shaderCallback: (bounds) {
+            return LinearGradient(
+              colors: [baseColor, highlightColor, baseColor],
+              stops: const [0.0, 0.5, 1.0],
+              begin: Alignment(-1.0 + (_controller.value * 3), -0.3),
+              end: Alignment(-0.5 + (_controller.value * 3), 0.3),
+            ).createShader(bounds);
+          },
+          child: child,
+        );
+      },
+      child: Container(color: Colors.white), // El lienzo base sobre el que pinta el Shader
     );
   }
 }
@@ -309,6 +367,93 @@ class _LavaLampBackgroundState extends State<LavaLampBackground>
           ),
         );
       },
+    );
+  }
+}
+
+// ✨ WIDGET UTILITARIO: SKELETON LOADER CON SHIMMER EFFECT ✨
+class ShimmerSkeletonItem extends StatefulWidget {
+  const ShimmerSkeletonItem({super.key});
+
+  @override
+  State<ShimmerSkeletonItem> createState() => _ShimmerSkeletonItemState();
+}
+
+class _ShimmerSkeletonItemState extends State<ShimmerSkeletonItem>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.white24 : Colors.black12;
+    final highlightColor = isDark ? Colors.white70 : Colors.black26;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return ShaderMask(
+          blendMode: BlendMode.srcATop,
+          shaderCallback: (bounds) {
+            // ✨ El gradiente barre de izquierda a derecha dinámicamente
+            return LinearGradient(
+              colors: [baseColor, highlightColor, baseColor],
+              stops: const [0.0, 0.5, 1.0],
+              begin: Alignment(-1.0 + (_controller.value * 3), -0.3),
+              end: Alignment(-0.5 + (_controller.value * 3), 0.3),
+            ).createShader(bounds);
+          },
+          child: child,
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 15),
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        child: Row(
+          children: [
+            // Cuadrado de la Portada
+            Container(
+              width: 55,
+              height: 55,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+              ),
+            ),
+            const SizedBox(width: 15),
+            // Líneas de Texto (Título y Artista)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(width: double.infinity, height: 14, color: Colors.white),
+                  const SizedBox(height: 10),
+                  Container(width: 120, height: 10, color: Colors.white),
+                ],
+              ),
+            ),
+            const SizedBox(width: 20),
+            // Ícono lateral
+            Container(width: 24, height: 24, decoration: const BoxShape.circle == BoxShape.circle ? const BoxDecoration(color: Colors.white, shape: BoxShape.circle) : null),
+          ],
+        ),
+      ),
     );
   }
 }

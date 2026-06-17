@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:spotify_sdk/spotify_sdk.dart';
-import 'package:spotify_sdk/models/image_uri.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import '../api_keys.dart';

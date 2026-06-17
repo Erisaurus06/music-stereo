@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'package:music_stereo/services/favorites_manager.dart';
@@ -7,7 +8,6 @@ import 'package:music_stereo/widgets/design_components.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 // Importaciones de tu arquitectura limpia
 import 'services/network_radar.dart';
-import 'services/app_state.dart';
 import 'services/app_state.dart';
 import 'services/player_manager.dart';
 import 'services/bubble_manager.dart';
@@ -178,6 +178,9 @@ class _MusicStereoAppState extends State<MusicStereoApp>
         "Aplicación bloqueada por inactividad.",
       );
     } else if (state == AppLifecycleState.resumed) {
+      // ✨ FIX: Sincronizar Pomodoro tras salir de la suspensión del SO
+      PomodoroEngine.checkBackgroundState();
+
       // ✨ SOLO pedir biometría si la app está realmente bloqueada
       if (_isLocked) {
         _authenticate();
@@ -246,44 +249,220 @@ class _MusicStereoAppState extends State<MusicStereoApp>
         themeMode: currentMode,
         theme: DinobotTheme.lightTheme,
         darkTheme: DinobotTheme.darkTheme,
-        home: _isLocked
-            ? Scaffold(
-                body: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+        // ✨ APLICAMOS EL CROSSFADE GLOBAL DEL TEMA
+        themeAnimationDuration: const Duration(milliseconds: 800),
+        themeAnimationCurve: Curves.easeInOutCubic,
+        home: ValueListenableBuilder<Color>(
+          valueListenable: PlayerManager.currentThemeColor,
+          builder: (context, themeColor, _) {
+            return AnimatedTheme(
+              data: Theme.of(context).copyWith(
+                primaryColor: themeColor,
+                colorScheme: Theme.of(
+                  context,
+                ).colorScheme.copyWith(primary: themeColor),
+              ),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeInOutCubic,
+              child: Builder(
+                builder: (innerContext) {
+                  return Stack(
                     children: [
-                      const Icon(
-                        Icons.lock_person_rounded,
-                        size: 80,
-                        color: Colors.blueAccent,
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        "Aplicación Bloqueada",
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      ElevatedButton(
-                        onPressed: _isAuthenticating ? null : _authenticate,
-                        child: _isAuthenticating
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                  color: Colors.white,
+                      // ✨ LA APP SIEMPRE ESTÁ DEBAJO PARA EL EFECTO BLUR
+                      const AuthGate(),
+
+                      // ✨ PANTALLA DE BLOQUEO CON GLASSMORPHISM
+                      if (_isLocked)
+                        Positioned.fill(
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            duration: const Duration(milliseconds: 400),
+                            curve: Curves.easeOut,
+                            builder: (context, value, child) => BackdropFilter(
+                              filter: ImageFilter.blur(
+                                sigmaX: 25 * value,
+                                sigmaY: 25 * value,
+                              ),
+                              child: Container(
+                                color: Colors.black.withValues(
+                                  alpha: 0.5 * value,
                                 ),
-                              )
-                            : const Text("Desbloquear"),
+                                child: child,
+                              ),
+                            ),
+                            child: Scaffold(
+                              backgroundColor: Colors.transparent,
+                              body: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.lock_outline_rounded,
+                                      size: 80,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(height: 20),
+                                    const Text(
+                                      "Aplicación Bloqueada",
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 30),
+                                    AnimatedScale(
+                                      scale: _isAuthenticating ? 0.95 : 1.0,
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
+                                      child: ElevatedButton.icon(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: themeColor,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 30,
+                                            vertical: 15,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              30,
+                                            ),
+                                          ),
+                                          elevation: 8,
+                                          shadowColor: themeColor.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                        ),
+                                        onPressed: _isAuthenticating
+                                            ? null
+                                            : () {
+                                                HapticFeedback.mediumImpact();
+                                                _authenticate();
+                                              },
+                                        icon: _isAuthenticating
+                                            ? const SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 3,
+                                                      color: Colors.white,
+                                                    ),
+                                              )
+                                            : const Icon(
+                                                Icons.fingerprint_rounded,
+                                              ),
+                                        label: Text(
+                                          _isAuthenticating
+                                              ? "Verificando..."
+                                              : "Desbloquear",
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                      // ✨ BANNER GLOBAL ANIMADO PARA PÉRDIDA DE RED
+                      ValueListenableBuilder<bool>(
+                        valueListenable: NetworkRadar.isOnline,
+                        builder: (context, isOnline, _) {
+                          final double topPadding = MediaQuery.of(
+                            innerContext,
+                          ).padding.top;
+                          return AnimatedPositioned(
+                            duration: const Duration(milliseconds: 600),
+                            curve: Curves.easeOutCubic,
+                            top: isOnline ? -150 : topPadding + 10,
+                            left: 20,
+                            right: 20,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(
+                                  sigmaX: 15,
+                                  sigmaY: 15,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 15,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent.withValues(
+                                      alpha: 0.85,
+                                    ),
+                                    border: Border.all(
+                                      color: Colors.white24,
+                                      width: 1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        blurRadius: 15,
+                                        offset: const Offset(0, 10),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(
+                                        Icons.wifi_off_rounded,
+                                        color: Colors.white,
+                                        size: 28,
+                                      ),
+                                      SizedBox(width: 15),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              "Sin conexión a Internet",
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            Text(
+                                              "Solo música local disponible",
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
-                  ),
-                ),
-              )
-            : const AuthGate(),
+                  );
+                },
+              ),
+            );
+          },
+        ),
       ),
     );
   }

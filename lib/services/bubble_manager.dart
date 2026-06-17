@@ -1,4 +1,8 @@
+import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../widgets/design_components.dart';
 import '../main.dart'; // Para acceder a la llave de navegación global
 import 'player_manager.dart';
@@ -11,7 +15,13 @@ class BubbleManager {
 
   /// Inicializa la burbuja y pide los permisos necesarios.
   static Future<void> init() async {
-    // No se necesitan permisos nativos al usar el Overlay de Flutter
+    // ✨ Solicitar permisos de superposición (SYSTEM_ALERT_WINDOW) para Android
+    if (Platform.isAndroid) {
+      final status = await Permission.systemAlertWindow.status;
+      if (!status.isGranted) {
+        await Permission.systemAlertWindow.request();
+      }
+    }
   }
 
   /// Muestra la burbuja en la pantalla.
@@ -61,15 +71,27 @@ class _BubbleWidgetState extends State<BubbleWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => setState(() => _isExpanded = !_isExpanded),
-      child: Material(
-        color: Colors.transparent,
-        elevation: 10,
-        borderRadius: BorderRadius.circular(_isExpanded ? 20 : 50),
-        child: _isExpanded
-            ? const PlayerBubbleExpanded()
-            : const PlayerBubbleIcon(),
+    // ✨ Detecta toques fuera del widget para cerrar el modo expandido
+    return TapRegion(
+      onTapOutside: (event) {
+        if (_isExpanded) {
+          HapticFeedback.lightImpact();
+          setState(() => _isExpanded = false);
+        }
+      },
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() => _isExpanded = !_isExpanded);
+        },
+        child: Material(
+          color: Colors.transparent,
+          elevation: 10,
+          borderRadius: BorderRadius.circular(_isExpanded ? 24 : 50),
+          child: _isExpanded
+              ? const PlayerBubbleExpanded()
+              : const PlayerBubbleIcon(),
+        ),
       ),
     );
   }
@@ -78,8 +100,42 @@ class _BubbleWidgetState extends State<BubbleWidget> {
 // --- WIDGETS DE LA BURBUJA ---
 
 /// 1. El ícono circular cuando la burbuja está contraída.
-class PlayerBubbleIcon extends StatelessWidget {
+class PlayerBubbleIcon extends StatefulWidget {
   const PlayerBubbleIcon({super.key});
+
+  @override
+  State<PlayerBubbleIcon> createState() => _PlayerBubbleIconState();
+}
+
+class _PlayerBubbleIconState extends State<PlayerBubbleIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _rotationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _rotationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 15), // ✨ Rotación lenta y elegante
+    );
+    PlayerManager.isPlaying.addListener(_checkRotation);
+    _checkRotation();
+  }
+
+  void _checkRotation() {
+    if (PlayerManager.isPlaying.value) {
+      _rotationController.repeat();
+    } else {
+      _rotationController.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    PlayerManager.isPlaying.removeListener(_checkRotation);
+    _rotationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,12 +151,14 @@ class PlayerBubbleIcon extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: PlayerManager.currentThemeColor.value.withOpacity(0.5),
+                  color: PlayerManager.currentThemeColor.value.withValues(
+                    alpha: 0.5,
+                  ),
                   width: 3,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
+                    color: Colors.black.withValues(alpha: 0.3),
                     blurRadius: 10,
                   ),
                 ],
@@ -109,10 +167,13 @@ class PlayerBubbleIcon extends StatelessWidget {
                 child: AnimatedScale(
                   scale: isPlaying ? 1.0 : 0.9,
                   duration: const Duration(milliseconds: 400),
-                  child: HybridArtworkWidget(
-                    artworkData: art,
-                    title: PlayerManager.currentTitle.value,
-                    artist: PlayerManager.currentArtist.value,
+                  child: RotationTransition(
+                    turns: _rotationController,
+                    child: HybridArtworkWidget(
+                      artworkData: art,
+                      title: PlayerManager.currentTitle.value,
+                      artist: PlayerManager.currentArtist.value,
+                    ),
                   ),
                 ),
               ),
@@ -205,8 +266,8 @@ class PlayerBubbleExpanded extends StatelessWidget {
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    IconButton(
-                      icon: const Icon(
+                    const IconButton(
+                      icon: Icon(
                         Icons.skip_previous_rounded,
                         color: Colors.white,
                       ),
@@ -222,18 +283,12 @@ class PlayerBubbleExpanded extends StatelessWidget {
                       ),
                       onPressed: PlayerManager.togglePlay,
                     ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.skip_next_rounded,
-                        color: Colors.white,
-                      ),
+                    const IconButton(
+                      icon: Icon(Icons.skip_next_rounded, color: Colors.white),
                       onPressed: PlayerManager.playNext,
                     ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.close_rounded,
-                        color: Colors.white54,
-                      ),
+                    const IconButton(
+                      icon: Icon(Icons.close_rounded, color: Colors.white54),
                       onPressed: BubbleManager.hide,
                     ),
                   ],

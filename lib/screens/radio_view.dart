@@ -4,6 +4,8 @@ import 'package:music_stereo/services/radio_engine.dart';
 import '../services/app_state.dart';
 import '../services/player_manager.dart';
 import '../models/app_models.dart';
+import '../widgets/design_components.dart';
+import '../services/network_radar.dart';
 
 // --- 📻 VISTA DE RADIO GLOBAL (CON FAVORITOS PERMANENTES) ---
 class RadioView extends StatefulWidget {
@@ -57,11 +59,12 @@ class _RadioViewState extends State<RadioView>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final double bottomPadding = MediaQuery.of(context).padding.bottom;
+    final double keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
     // ✨ Lógica de espaciado dinámica e infalible (Estilo iOS)
-    // Deja espacio para el minireproductor (120px aprox) más el margen real del sistema.
+    // Deja espacio para el minireproductor, margen del sistema y el teclado virtual.
     final double listBottomSpace =
-        120.0 + (bottomPadding > 0 ? bottomPadding : 20.0);
+        120.0 + (bottomPadding > 0 ? bottomPadding : 20.0) + keyboardHeight;
 
     return SafeArea(
       bottom:
@@ -99,7 +102,9 @@ class _RadioViewState extends State<RadioView>
                     borderRadius: BorderRadius.circular(
                       12,
                     ), // ✨ iOS: Bordes más sutiles para barras de búsqueda
-                    border: Border.all(color: Colors.white.withOpacity(0.05)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.05),
+                    ),
                   ),
                   child: TextField(
                     controller: _searchController,
@@ -170,29 +175,119 @@ class _RadioViewState extends State<RadioView>
               ),
 
               Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  physics: const BouncingScrollPhysics(),
-                  children: [
-                    _buildRadioList(
-                      theme,
-                      isFavoritesTab: false,
-                      bottomSpace: listBottomSpace,
-                    ),
-                    _buildRadioList(
-                      theme,
-                      isFavoritesTab: true,
-                      bottomSpace: listBottomSpace,
-                    ),
-                    _buildRecordingsTab(
-                      theme,
-                      bottomSpace: listBottomSpace,
-                    ), // ✨ CONTENIDO GRABACIONES
-                  ],
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: NetworkRadar.isOnline,
+                  builder: (context, isOnline, _) {
+                    // ✨ EMPTY STATE PREMIUM CUANDO SE CORTA EL INTERNET
+                    if (!isOnline) return _buildOfflineEmptyState(theme);
+
+                    return TabBarView(
+                      controller: _tabController,
+                      physics: const BouncingScrollPhysics(),
+                      children: [
+                        _buildRadioList(
+                          theme,
+                          isFavoritesTab: false,
+                          bottomSpace: listBottomSpace,
+                        ),
+                        _buildRadioList(
+                          theme,
+                          isFavoritesTab: true,
+                          bottomSpace: listBottomSpace,
+                        ),
+                        _buildRecordingsTab(
+                          theme,
+                          bottomSpace: listBottomSpace,
+                        ), // ✨ CONTENIDO GRABACIONES
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ✨ NUEVO: Empty State animado y elegante para cuando no hay red
+  Widget _buildOfflineEmptyState(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                // Sombra difuminada (Glow) detrás del ícono
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.redAccent.withValues(alpha: 0.25),
+                        blurRadius: 50,
+                        spreadRadius: 20,
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.wifi_off_rounded,
+                  size: 80,
+                  color: Colors.redAccent,
+                ),
+              ],
+            ),
+            const SizedBox(height: 30),
+            Text(
+              "Sin Señal",
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: theme.textTheme.bodyLarge?.color,
+                letterSpacing: -1,
+              ),
+            ),
+            const SizedBox(height: 15),
+            Text(
+              "La radio global requiere conexión a internet. Disfruta de tu música guardada mientras regresa la señal.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: theme.textTheme.bodyMedium?.color,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 40),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 30,
+                  vertical: 15,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                // Regresa al usuario a la primera pestaña de la App (Local) si implementas un PageController global
+              },
+              icon: const Icon(Icons.folder_music_rounded),
+              label: const Text(
+                "Ir a Biblioteca Local",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -214,7 +309,7 @@ class _RadioViewState extends State<RadioView>
             Icon(
               Icons.mic_external_on_rounded,
               size: 80,
-              color: theme.primaryColor.withOpacity(0.5),
+              color: theme.primaryColor.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 20),
             Text(
@@ -252,9 +347,20 @@ class _RadioViewState extends State<RadioView>
     required double bottomSpace,
   }) {
     if (_isLoading && !isFavoritesTab) {
-      return const Center(
-        child: CircularProgressIndicator.adaptive(),
-      ); // ✨ Híbrido: Rueda en iOS, Spinner en Android
+      // ✨ SKELETON LOADER EN ACCIÓN
+      return ListView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: EdgeInsets.only(
+          top: 10,
+          left: 20,
+          right: 20,
+          bottom: bottomSpace,
+        ),
+        itemCount: 8, // Mostramos 8 esqueletos falsos para llenar la pantalla
+        itemBuilder: (context, index) {
+          return const ShimmerSkeletonItem();
+        },
+      );
     }
 
     // ✨ MAGIA: Ahora escuchamos la memoria real de PlayerManager, no un filtro temporal
@@ -341,8 +447,8 @@ class _RadioViewState extends State<RadioView>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.cardColor.withOpacity(0.9),
-            theme.cardColor.withOpacity(0.6),
+            theme.cardColor.withValues(alpha: 0.9),
+            theme.cardColor.withValues(alpha: 0.6),
           ],
         ),
         borderRadius: BorderRadius.circular(
@@ -350,8 +456,8 @@ class _RadioViewState extends State<RadioView>
         ), // ✨ iOS: Bordes "Super Ellipse"
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(
-              0.06,
+            color: Colors.black.withValues(
+              alpha: 0.06,
             ), // ✨ iOS: Sombra más amplia y difusa
             blurRadius: 20,
             offset: const Offset(0, 8),
@@ -359,8 +465,8 @@ class _RadioViewState extends State<RadioView>
         ],
         border: Border.all(
           color: theme.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.05)
-              : Colors.black.withOpacity(0.03),
+              ? Colors.white.withValues(alpha: 0.05)
+              : Colors.black.withValues(alpha: 0.03),
         ),
       ),
       child: Material(
@@ -386,7 +492,7 @@ class _RadioViewState extends State<RadioView>
           confirmDismiss: (direction) async {
             // Realiza la acción pero cancela la animación de "eliminar" visualmente la tarjeta
             HapticFeedback.heavyImpact();
-            PlayerManager.toggleRadioFavorite(radio);
+            PlayerManager.toggleRadioFavorite(radio, context);
             return false;
           },
           child: InkWell(
@@ -415,7 +521,7 @@ class _RadioViewState extends State<RadioView>
                   errorBuilder: (_, __, ___) => Container(
                     width: 55,
                     height: 55,
-                    color: theme.primaryColor.withOpacity(0.2),
+                    color: theme.primaryColor.withValues(alpha: 0.2),
                     child: Icon(Icons.radio, color: theme.primaryColor),
                   ),
                 ),
@@ -457,7 +563,7 @@ class _RadioViewState extends State<RadioView>
                               : Icons.radio_button_checked_rounded,
                           color: recordingThis
                               ? Colors.redAccent
-                              : Colors.grey.withOpacity(0.4),
+                              : Colors.grey.withValues(alpha: 0.4),
                           size: recordingThis ? 28 : 24,
                         ),
                         onPressed: () {
@@ -473,26 +579,82 @@ class _RadioViewState extends State<RadioView>
                       );
                     },
                   ),
-                  IconButton(
-                    icon: Icon(
-                      isFav
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      color: isFav
-                          ? Colors.redAccent
-                          : Colors.grey.withOpacity(0.4),
-                    ),
-                    onPressed: () {
-                      HapticFeedback.selectionClick();
-                      PlayerManager.toggleRadioFavorite(radio);
-                    },
-                  ),
+                  _FavoriteHeartButton(radio: radio, isFav: isFav),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+// ✨ WIDGET DEDICADO PARA EL BOTÓN DE CORAZÓN CON ANIMACIÓN DE LATIDO
+class _FavoriteHeartButton extends StatefulWidget {
+  final RadioStation radio;
+  final bool isFav;
+
+  const _FavoriteHeartButton({required this.radio, required this.isFav});
+
+  @override
+  State<_FavoriteHeartButton> createState() => _FavoriteHeartButtonState();
+}
+
+class _FavoriteHeartButtonState extends State<_FavoriteHeartButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  bool _isAnimating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    // Animación de latido: escala hacia arriba y luego vuelve a su tamaño original
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.5), weight: 50),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.5, end: 1.0), weight: 50),
+    ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _onTap() async {
+    if (_isAnimating) return;
+    setState(() => _isAnimating = true);
+
+    HapticFeedback.heavyImpact(); // ✨ Respuesta táctil contundente
+    await _controller.forward(from: 0.0);
+
+    // Llama a la lógica de negocio con el contexto para mostrar SnackBars
+    PlayerManager.toggleRadioFavorite(widget.radio, context);
+
+    if (mounted) {
+      setState(() => _isAnimating = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: ScaleTransition(
+        scale: _scaleAnimation,
+        child: Icon(
+          widget.isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          color: widget.isFav
+              ? Colors.redAccent
+              : Colors.grey.withValues(alpha: 0.4),
+        ),
+      ),
+      onPressed: _onTap,
     );
   }
 }

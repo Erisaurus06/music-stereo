@@ -77,9 +77,11 @@ class _LibraryViewState extends State<LibraryView>
                 child: Container(
                   padding: const EdgeInsets.all(30),
                   decoration: BoxDecoration(
-                    color: theme.cardColor.withOpacity(0.85),
+                    color: theme.cardColor.withValues(alpha: 0.85),
                     border: Border(
-                      top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                      top: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.1),
+                      ),
                     ),
                   ),
                   child: Column(
@@ -89,7 +91,7 @@ class _LibraryViewState extends State<LibraryView>
                         width: 50,
                         height: 5,
                         decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.3),
+                          color: Colors.grey.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
@@ -124,7 +126,7 @@ class _LibraryViewState extends State<LibraryView>
                           width: 140,
                           height: 140,
                           decoration: BoxDecoration(
-                            color: theme.primaryColor.withOpacity(0.1),
+                            color: theme.primaryColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                             image: imagePath != null
                                 ? DecorationImage(
@@ -133,13 +135,15 @@ class _LibraryViewState extends State<LibraryView>
                                   )
                                 : null,
                             border: Border.all(
-                              color: theme.primaryColor.withOpacity(0.5),
+                              color: theme.primaryColor.withValues(alpha: 0.5),
                               width: 2,
                             ),
                             boxShadow: imagePath != null
                                 ? [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.2,
+                                      ),
                                       blurRadius: 15,
                                       offset: const Offset(0, 10),
                                     ),
@@ -181,8 +185,8 @@ class _LibraryViewState extends State<LibraryView>
                             fontWeight: FontWeight.normal,
                           ),
                           filled: true,
-                          fillColor: theme.scaffoldBackgroundColor.withOpacity(
-                            0.5,
+                          fillColor: theme.scaffoldBackgroundColor.withValues(
+                            alpha: 0.5,
                           ),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(20),
@@ -262,9 +266,9 @@ class _LibraryViewState extends State<LibraryView>
             child: Container(
               padding: const EdgeInsets.all(30),
               decoration: BoxDecoration(
-                color: theme.cardColor.withOpacity(0.85),
+                color: theme.cardColor.withValues(alpha: 0.85),
                 border: Border(
-                  top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                 ),
               ),
               child: Column(
@@ -274,7 +278,7 @@ class _LibraryViewState extends State<LibraryView>
                     width: 50,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.3),
+                      color: Colors.grey.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
@@ -308,7 +312,9 @@ class _LibraryViewState extends State<LibraryView>
                     decoration: InputDecoration(
                       hintText: "Ej. This is Billie Eilish",
                       filled: true,
-                      fillColor: theme.scaffoldBackgroundColor.withOpacity(0.5),
+                      fillColor: theme.scaffoldBackgroundColor.withValues(
+                        alpha: 0.5,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
                         borderSide: BorderSide.none,
@@ -326,7 +332,9 @@ class _LibraryViewState extends State<LibraryView>
                         color: Colors.grey,
                       ),
                       filled: true,
-                      fillColor: theme.scaffoldBackgroundColor.withOpacity(0.5),
+                      fillColor: theme.scaffoldBackgroundColor.withValues(
+                        alpha: 0.5,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(20),
                         borderSide: BorderSide.none,
@@ -346,19 +354,23 @@ class _LibraryViewState extends State<LibraryView>
                       ),
                       onPressed: () {
                         if (playlistName.trim().isEmpty ||
-                            spotifyUrl.trim().isEmpty)
+                            spotifyUrl.trim().isEmpty) {
                           return;
+                        }
                         HapticFeedback.heavyImpact();
                         String finalUri = spotifyUrl;
                         if (spotifyUrl.contains("open.spotify.com")) {
                           final parts = spotifyUrl.split("/");
                           final idPart = parts.last.split("?").first;
-                          if (spotifyUrl.contains("playlist"))
+                          if (spotifyUrl.contains("playlist")) {
                             finalUri = "spotify:playlist:$idPart";
-                          if (spotifyUrl.contains("album"))
+                          }
+                          if (spotifyUrl.contains("album")) {
                             finalUri = "spotify:album:$idPart";
-                          if (spotifyUrl.contains("artist"))
+                          }
+                          if (spotifyUrl.contains("artist")) {
                             finalUri = "spotify:artist:$idPart";
+                          }
                         }
                         final newCollection = AppCollection(
                           id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -414,7 +426,7 @@ class _LibraryViewState extends State<LibraryView>
               decoration: BoxDecoration(
                 color: theme.cardColor,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
               ),
               child: TextField(
                 controller: _searchController,
@@ -608,7 +620,7 @@ class _LibraryViewState extends State<LibraryView>
                               borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
+                                  color: Colors.black.withValues(alpha: 0.05),
                                   blurRadius: 10,
                                   offset: const Offset(0, 5),
                                 ),
@@ -688,8 +700,8 @@ class _LibraryViewState extends State<LibraryView>
                                                             .favorite_border_rounded,
                                                   color: isFav
                                                       ? Colors.redAccent
-                                                      : Colors.grey.withOpacity(
-                                                          0.5,
+                                                      : Colors.grey.withValues(
+                                                          alpha: 0.5,
                                                         ),
                                                   size: 16,
                                                 ),
@@ -731,7 +743,7 @@ class _LibraryViewState extends State<LibraryView>
                               ),
                               decoration: BoxDecoration(
                                 color: isPlayingThis
-                                    ? theme.primaryColor.withOpacity(0.1)
+                                    ? theme.primaryColor.withValues(alpha: 0.1)
                                     : theme.cardColor,
                                 borderRadius: BorderRadius.circular(16),
                               ),
@@ -805,8 +817,8 @@ class _LibraryViewState extends State<LibraryView>
                                               key: ValueKey<bool>(isFav),
                                               color: isFav
                                                   ? Colors.redAccent
-                                                  : Colors.grey.withOpacity(
-                                                      0.5,
+                                                  : Colors.grey.withValues(
+                                                      alpha: 0.5,
                                                     ),
                                               size: 24,
                                             ),
@@ -867,7 +879,7 @@ class _LibraryViewState extends State<LibraryView>
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.redAccent.withOpacity(0.3),
+                        color: Colors.redAccent.withValues(alpha: 0.3),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -881,7 +893,7 @@ class _LibraryViewState extends State<LibraryView>
                     leading: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -903,7 +915,7 @@ class _LibraryViewState extends State<LibraryView>
                       builder: (context, favs, _) => Text(
                         "${favs.length} tracks locales",
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1046,7 +1058,7 @@ class _LibraryViewState extends State<LibraryView>
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
+                              color: Colors.black.withValues(alpha: 0.1),
                               blurRadius: 10,
                               offset: const Offset(0, 5),
                             ),
@@ -1070,7 +1082,7 @@ class _LibraryViewState extends State<LibraryView>
                                           fit: BoxFit.cover,
                                         )
                                       : null,
-                                  color: badgeColor.withOpacity(0.1),
+                                  color: badgeColor.withValues(alpha: 0.1),
                                 ),
                                 child: collection.imagePath == null
                                     ? Icon(
@@ -1138,10 +1150,10 @@ class _LibraryViewState extends State<LibraryView>
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
@@ -1152,7 +1164,7 @@ class _LibraryViewState extends State<LibraryView>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 28),
@@ -1218,7 +1230,7 @@ class SuperFavoritesFolderView extends StatelessWidget {
                   padding: const EdgeInsets.all(8.0),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
@@ -1267,7 +1279,7 @@ class SuperFavoritesFolderView extends StatelessWidget {
                             Text(
                               "${favSongs.length} Pistas Locales",
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
+                                color: Colors.white.withValues(alpha: 0.8),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

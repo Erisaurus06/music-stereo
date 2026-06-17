@@ -229,8 +229,8 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
             ? Colors.black
             : Colors.white;
         final Color glowColor = isLightColor
-            ? safeThemeColor.withOpacity(0.7)
-            : safeThemeColor.withOpacity(0.9);
+            ? safeThemeColor.withValues(alpha: 0.7)
+            : safeThemeColor.withValues(alpha: 0.9);
 
         return SafeArea(
           child: Column(
@@ -293,7 +293,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: safeThemeColor.withOpacity(0.15),
+                        color: safeThemeColor.withValues(alpha: 0.15),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -325,14 +325,14 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: theme.cardColor.withOpacity(0.5),
+                              color: theme.cardColor.withValues(alpha: 0.5),
                               borderRadius: BorderRadius.circular(25),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.05),
+                                color: Colors.white.withValues(alpha: 0.05),
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
+                                  color: Colors.black.withValues(alpha: 0.1),
                                   blurRadius: 20,
                                   offset: const Offset(0, 10),
                                 ),
@@ -373,12 +373,12 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                             color: theme.cardColor,
                             boxShadow: [
                               BoxShadow(
-                                color: glowColor.withOpacity(0.3),
+                                color: glowColor.withValues(alpha: 0.3),
                                 blurRadius: 60,
                                 spreadRadius: 15,
                               ),
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
+                                color: Colors.black.withValues(alpha: 0.3),
                                 blurRadius: 30,
                                 offset: const Offset(0, 15),
                               ),
@@ -425,11 +425,13 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                                     ),
                                     decoration: BoxDecoration(
                                       color: state == PomodoroState.focus
-                                          ? safeThemeColor.withOpacity(0.2)
+                                          ? safeThemeColor.withValues(
+                                              alpha: 0.2,
+                                            )
                                           : (state == PomodoroState.idle
                                                 ? Colors.white10
-                                                : Colors.green.withOpacity(
-                                                    0.2,
+                                                : Colors.green.withValues(
+                                                    alpha: 0.2,
                                                   )),
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
@@ -532,7 +534,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                                   ? LinearGradient(
                                       colors: [
                                         safeThemeColor,
-                                        safeThemeColor.withOpacity(0.8),
+                                        safeThemeColor.withValues(alpha: 0.8),
                                       ],
                                     )
                                   : const LinearGradient(
@@ -542,8 +544,8 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                               boxShadow: [
                                 BoxShadow(
                                   color: state == PomodoroState.idle
-                                      ? safeThemeColor.withOpacity(0.4)
-                                      : Colors.red.withOpacity(0.4),
+                                      ? safeThemeColor.withValues(alpha: 0.4)
+                                      : Colors.red.withValues(alpha: 0.4),
                                   blurRadius: 20,
                                   offset: const Offset(0, 8),
                                 ),
@@ -640,13 +642,13 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
           borderRadius: BorderRadius.circular(25),
           border: Border.all(
             color: isZenMode
-                ? themeColor.withOpacity(0.5)
-                : Colors.white.withOpacity(0.05),
+                ? themeColor.withValues(alpha: 0.5)
+                : Colors.white.withValues(alpha: 0.05),
             width: isZenMode ? 2 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -662,7 +664,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: themeColor.withOpacity(0.2),
+                        color: themeColor.withValues(alpha: 0.2),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(rangoIcon, color: themeColor),
@@ -731,7 +733,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                 ),
                 Switch(
                   value: isZenMode,
-                  activeColor: themeColor,
+                  activeThumbColor: themeColor,
                   onChanged: (val) {
                     ref.read(zenModeProvider.notifier).state = val;
                     HapticFeedback.lightImpact();
@@ -756,7 +758,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
       padding: const EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
         color: theme.brightness == Brightness.dark
-            ? Colors.black.withOpacity(0.3)
+            ? Colors.black.withValues(alpha: 0.3)
             : Colors.grey.shade200,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
       ),
@@ -836,7 +838,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1DB954).withOpacity(0.2),
+                      color: const Color(0xFF1DB954).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Text(
@@ -923,7 +925,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.redAccent.withOpacity(0.2),
+                      color: Colors.redAccent.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Text(
@@ -1019,8 +1021,9 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
             const SnackBar(content: Text("🟢 Abriendo Spotify...")),
           );
           final Uri url = Uri.parse(uri);
-          if (await canLaunchUrl(url))
+          if (await canLaunchUrl(url)) {
             await launchUrl(url, mode: LaunchMode.externalApplication);
+          }
         } else if (tipo == 'youtube_video') {
           showDialog(
             context: context,
@@ -1035,10 +1038,10 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(25),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color: Colors.black.withValues(alpha: 0.15),
               blurRadius: 15,
               offset: const Offset(0, 8),
             ),
@@ -1050,7 +1053,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 24),
@@ -1102,10 +1105,10 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.3), width: 2),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
@@ -1144,13 +1147,13 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
               return Container(
                 padding: const EdgeInsets.all(30),
                 decoration: BoxDecoration(
-                  color: theme.cardColor.withOpacity(0.95),
+                  color: theme.cardColor.withValues(alpha: 0.95),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(40),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: color.withOpacity(0.2),
+                      color: color.withValues(alpha: 0.2),
                       blurRadius: 40,
                       offset: const Offset(0, -10),
                     ),
@@ -1207,7 +1210,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                         // ✨ SECCIÓN DESCANSO
                         Text(
                           "Descanso: $breakElegido min",
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors
@@ -1268,9 +1271,9 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.5), width: 2),
+          border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
         ),
         child: Icon(Icons.tune_rounded, color: color, size: 20),
       ),
@@ -1316,7 +1319,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                 decoration: InputDecoration(
                   hintText: "Nombre (ej. Rap para programar)",
                   filled: true,
-                  fillColor: Colors.black.withOpacity(0.1),
+                  fillColor: Colors.black.withValues(alpha: 0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
                     borderSide: BorderSide.none,
@@ -1329,7 +1332,7 @@ class _PomodoroViewState extends ConsumerState<PomodoroView> {
                 decoration: InputDecoration(
                   hintText: "Pega enlace de Spotify o YouTube...",
                   filled: true,
-                  fillColor: Colors.black.withOpacity(0.1),
+                  fillColor: Colors.black.withValues(alpha: 0.1),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
                     borderSide: BorderSide.none,

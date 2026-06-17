@@ -169,7 +169,7 @@ class _CollectionViewState extends State<CollectionView> {
               padding: const EdgeInsets.all(8.0),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
+                  color: Colors.black.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
@@ -194,7 +194,9 @@ class _CollectionViewState extends State<CollectionView> {
                   if (widget.collection.imagePath != null)
                     BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                      child: Container(color: Colors.black.withOpacity(0.4)),
+                      child: Container(
+                        color: Colors.black.withValues(alpha: 0.4),
+                      ),
                     ),
                   Center(
                     child: Container(
@@ -211,10 +213,10 @@ class _CollectionViewState extends State<CollectionView> {
                                 fit: BoxFit.cover,
                               )
                             : null,
-                        color: theme.primaryColor.withOpacity(0.2),
+                        color: theme.primaryColor.withValues(alpha: 0.2),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withValues(alpha: 0.3),
                             blurRadius: 20,
                             offset: const Offset(0, 10),
                           ),

@@ -247,8 +247,9 @@ class PlayerManager {
 
   static void init() {
     player.playingStream.listen((playing) {
-      if (activeEngine.value == AudioEngineType.local)
+      if (activeEngine.value == AudioEngineType.local) {
         isPlaying.value = playing;
+      }
     });
 
     player.positionStream.listen((p) {
@@ -260,8 +261,9 @@ class PlayerManager {
     });
 
     player.durationStream.listen((d) {
-      if (activeEngine.value == AudioEngineType.local && d != null)
+      if (activeEngine.value == AudioEngineType.local && d != null) {
         duration.value = d;
+      }
     });
 
     player.processingStateStream.listen((state) {
@@ -337,12 +339,15 @@ class PlayerManager {
 
   // ✨ INTERFAZ MEJORADA: Lógica de paleta de colores extraída a un método reutilizable
   static Future<void> _updateColorFromImageProvider(
-      ImageProvider provider) async {
+    ImageProvider provider,
+  ) async {
     try {
       final palette = await PaletteGenerator.fromImageProvider(provider);
-      updateThemeColor(palette.dominantColor?.color ??
-          palette.vibrantColor?.color ??
-          _defaultThemeColor);
+      updateThemeColor(
+        palette.dominantColor?.color ??
+            palette.vibrantColor?.color ??
+            _defaultThemeColor,
+      );
     } catch (e) {
       debugPrint("⚠️ Error generando paleta: $e");
       updateThemeColor(_defaultThemeColor);
@@ -384,7 +389,9 @@ class PlayerManager {
         );
         await _updateColorFromImageProvider(NetworkImage(url));
       } else {
-        updateThemeColor(_defaultThemeColor); // Si no encuentra nada, usa el default
+        updateThemeColor(
+          _defaultThemeColor,
+        ); // Si no encuentra nada, usa el default
       }
     } catch (e) {
       debugPrint("Error color: $e");
@@ -421,8 +428,9 @@ class PlayerManager {
 
     if (isFadingOut) {
       for (int i = steps; i >= 0; i--) {
-        if (_crossfadeToken != currentToken)
+        if (_crossfadeToken != currentToken) {
           return; // Abortar si otra animación inició
+        }
         // ✨ Curva Premium "Equal-Power" (Coseno) - Evita la caída brusca del volumen
         double progress = i / steps;
         double volume = cos((1.0 - progress) * (pi / 2));
@@ -435,8 +443,9 @@ class PlayerManager {
       }
     } else {
       for (int i = 0; i <= steps; i++) {
-        if (_crossfadeToken != currentToken)
+        if (_crossfadeToken != currentToken) {
           return; // Abortar si otra animación inició
+        }
         // ✨ Curva Premium "Equal-Power" (Seno) - Entrada inmersiva
         double progress = i / steps;
         double volume = sin(progress * (pi / 2));
@@ -621,46 +630,47 @@ class PlayerManager {
   }
 
   // ✨ FIX DEFINITIVO: Eliminamos el error de puntero nulo (NoSuchMethodError)
-  static Future<void> toggleRadioFavorite(RadioStation station) async {
-    // Clona la lista actual
-    List<RadioStation> actuales = List.from(favoriteRadios.value);
+  static Future<void> toggleRadioFavorite(
+    RadioStation station,
+    BuildContext context,
+  ) async {
+    // --- OPTIMISTIC UI: PASO 1 (Backup y Estado Inmediato) ---
+    final List<RadioStation> originalFavorites = List.from(
+      favoriteRadios.value,
+    );
+    final bool isAdding = !originalFavorites.any((r) => r.id == station.id);
 
-    // Verifica si ya la tienes guardada
-    int index = actuales.indexWhere((r) => r.id == station.id);
-
-    if (index >= 0) {
-      actuales.removeAt(index); // La quita si ya estaba
+    List<RadioStation> newFavorites = List.from(originalFavorites);
+    if (isAdding) {
+      newFavorites.add(station);
     } else {
-      actuales.add(station); // La agrega si es nueva
+      newFavorites.removeWhere((r) => r.id == station.id);
     }
 
-    // Actualiza la vista al instante
-    favoriteRadios.value = actuales;
+    // Actualiza la UI al instante para una respuesta inmediata
+    favoriteRadios.value = newFavorites;
 
-    // ✨ GUARDAMOS LOCALMENTE PRIMERO (Para que funcione sin internet / sin login)
+    // --- PASO 2: Sincronización en Segundo Plano (Local y Nube) ---
     try {
+      // Guardado local (funciona sin internet/login)
       final prefs = await SharedPreferences.getInstance();
       final String encodedData = jsonEncode(
-        actuales.map((r) => r.toJson()).toList(),
+        newFavorites.map((r) => r.toJson()).toList(),
       );
       await prefs.setString('favorite_radios_local', encodedData);
-    } catch (e) {
-      debugPrint("❌ Error guardando radio local: $e");
-    }
 
-    // Sube LA LISTA COMPLETA a Supabase usando el cliente oficial instanciado
-    List<Object?> jsonList = actuales.map((r) => r.toJson()).toList();
-    try {
-      // 🧠 Usamos Supabase.instance.client que garantiza conectarse al cliente vivo de Supabase en tu Moto G41
+      // Sincronización con la nube (Supabase)
       final deSupabase = Supabase.instance.client;
       final usuarioActual = deSupabase.auth.currentUser;
 
       if (usuarioActual != null) {
-        await deSupabase.from('profiles').upsert(
-          {'id': usuarioActual.id, 'favorite_radios': jsonList},
-        ); // ✨ Upsert garantiza que se guarde forzosamente, insertando el perfil si no existía
+        List<Object?> jsonList = newFavorites.map((r) => r.toJson()).toList();
+        await deSupabase.from('profiles').upsert({
+          'id': usuarioActual.id,
+          'favorite_radios': jsonList,
+        });
         debugPrint(
-          "❤️ Favoritos de Radio sincronizados con Supabase: ${actuales.length}",
+          "❤️ Favoritos de Radio sincronizados con Supabase: ${newFavorites.length}",
         );
       } else {
         debugPrint(
@@ -668,8 +678,40 @@ class PlayerManager {
         );
       }
     } catch (e, stackTrace) {
-      debugPrint("❌ Error guardando radio en Supabase: $e");
-      // ✨ Monitoreo remoto: Enviamos el error silencioso a Firebase
+      // --- PASO 3: Rollback en caso de error ---
+      debugPrint("❌ Error sincronizando favoritos, revirtiendo: $e");
+
+      // Revierte el estado visual al original
+      favoriteRadios.value = originalFavorites;
+
+      // Revierte también el almacenamiento local
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+          'favorite_radios_local',
+          jsonEncode(originalFavorites.map((r) => r.toJson()).toList()),
+        );
+      } catch (localError) {
+        debugPrint(
+          "❌ Error crítico al revertir almacenamiento local: $localError",
+        );
+      }
+
+      // Muestra un mensaje de error al usuario
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isAdding
+                  ? 'Error de red. No se pudo añadir el favorito.'
+                  : 'Error de red. No se pudo quitar el favorito.',
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+
+      // Envía el error a monitoreo remoto
       FirebaseCrashlytics.instance.recordError(
         e,
         stackTrace,

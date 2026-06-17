@@ -102,7 +102,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     hintText: "Correo electrónico",
                     hintStyle: const TextStyle(color: Colors.white24),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
+                    fillColor: Colors.white.withValues(alpha: 0.05),
                     prefixIcon: const Icon(
                       Icons.email_rounded,
                       color: Colors.white54,
@@ -124,7 +124,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     hintText: "Contraseña",
                     hintStyle: const TextStyle(color: Colors.white24),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
+                    fillColor: Colors.white.withValues(alpha: 0.05),
                     prefixIcon: const Icon(
                       Icons.lock_rounded,
                       color: Colors.white54,

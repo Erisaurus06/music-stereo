@@ -31,7 +31,9 @@ class RadioStation {
     );
   }
 
-  Object? toJson() {}
+  Object? toJson() {
+    return null;
+  }
 }
 
 // 📡 LA ANTENA RECEPTORA (SE CONECTA A INTERNET)
