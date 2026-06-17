@@ -8,10 +8,10 @@ class LyricsEngine {
   // Función principal a la que llamará nuestra UI
   static Future<String> fetchLyrics(String title, String artist) async {
     final cleanTitle = title
-        .replaceAll(RegExp(r'\(.*\)'), '')
-        .replaceAll(RegExp(r'\[.*\]'), '')
+        .replaceAll(RegExp(r'\(.*?\)'), '')
+        .replaceAll(RegExp(r'\[.*?\]'), '')
         .trim();
-    String cleanArtist = artist.replaceAll(RegExp(r'\(.*\)'), '').trim();
+    String cleanArtist = artist.replaceAll(RegExp(r'\(.*?\)'), '').trim();
 
     // ✨ SOLUCIÓN 1: Evitar buscar a la banda "Desconocido"
     if (cleanArtist.toLowerCase().contains("desconocido") ||

@@ -115,6 +115,7 @@ class FullPlayerModal extends StatelessWidget {
                                 Positioned.fill(
                                   child: RepaintBoundary(
                                     child: ValueListenableBuilder<dynamic>(
+                                      // --- SECCIÓN: FONDO DINÁMICO ---
                                       valueListenable:
                                           PlayerManager.currentArtwork,
                                       builder: (context, art, _) => Stack(
@@ -166,9 +167,13 @@ class FullPlayerModal extends StatelessWidget {
                                                     Colors.transparent,
                                                     isLightColor
                                                         ? Colors.white
-                                                              .withValues(alpha: 0.9)
+                                                              .withValues(
+                                                                alpha: 0.9,
+                                                              )
                                                         : Colors.black
-                                                              .withValues(alpha: 0.9),
+                                                              .withValues(
+                                                                alpha: 0.9,
+                                                              ),
                                                   ],
                                                   stops: const [0.4, 1.0],
                                                 ),
@@ -194,7 +199,7 @@ class FullPlayerModal extends StatelessWidget {
                                 ),
 
                               SafeArea(
-                                bottom: false, // ✨ Permitir diseño Edge-to-Edge en el reproductor completo
+                                bottom: false,
                                 child: Column(
                                   children: [
                                     Padding(
@@ -205,6 +210,7 @@ class FullPlayerModal extends StatelessWidget {
                                         10,
                                       ),
                                       child: Row(
+                                        // --- SECCIÓN: CABECERA ---
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
                                         children: [
@@ -313,7 +319,7 @@ class FullPlayerModal extends StatelessWidget {
                                       ),
                                     ),
 
-                                    // PORTADA GIGANTE
+                                    // --- SECCIÓN: PORTADA ---
                                     Expanded(
                                       child: Center(
                                         child: GestureDetector(
@@ -322,12 +328,16 @@ class FullPlayerModal extends StatelessWidget {
                                                     .activeEngine
                                                     .value !=
                                                 AudioEngineType.radio) {
-                                              if (details.primaryVelocity! < 0) {
+                                              if ((details.primaryVelocity ??
+                                                      0) <
+                                                  0) {
                                                 PlayerManager.playNext();
-                                              } else if (details
-                                                      .primaryVelocity! >
-                                                  0)
+                                              } else if ((details
+                                                          .primaryVelocity ??
+                                                      0) >
+                                                  0) {
                                                 PlayerManager.playPrevious();
+                                              }
                                             }
                                           },
                                           child: ValueListenableBuilder<bool>(
@@ -382,23 +392,31 @@ class FullPlayerModal extends StatelessWidget {
                                               } else if (layoutMode ==
                                                   "Minimalista Zen") {
                                                 artwork = AnimatedContainer(
-                                                  duration: const Duration(milliseconds: 400),
+                                                  duration: const Duration(
+                                                    milliseconds: 400,
+                                                  ),
                                                   curve: Curves.easeOut,
                                                   decoration: BoxDecoration(
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                           40,
                                                         ),
-                                                    boxShadow: playing ? [
-                                                      BoxShadow(
-                                                        color: themeColor.withValues(alpha: 0.4),
-                                                        blurRadius: 25,
-                                                        offset: const Offset(
-                                                          0,
-                                                          15,
-                                                        ),
-                                                      ),
-                                                    ] : [],
+                                                    boxShadow: playing
+                                                        ? [
+                                                            BoxShadow(
+                                                              color: themeColor
+                                                                  .withValues(
+                                                                    alpha: 0.4,
+                                                                  ),
+                                                              blurRadius: 25,
+                                                              offset:
+                                                                  const Offset(
+                                                                    0,
+                                                                    15,
+                                                                  ),
+                                                            ),
+                                                          ]
+                                                        : [],
                                                   ),
                                                   child: ClipRRect(
                                                     borderRadius:
@@ -410,19 +428,27 @@ class FullPlayerModal extends StatelessWidget {
                                                 );
                                               } else {
                                                 artwork = AnimatedContainer(
-                                                  duration: const Duration(milliseconds: 400),
+                                                  duration: const Duration(
+                                                    milliseconds: 400,
+                                                  ),
                                                   curve: Curves.easeOut,
                                                   decoration: BoxDecoration(
-                                                    boxShadow: playing ? [
-                                                      BoxShadow(
-                                                        color: themeColor.withValues(alpha: 0.5),
-                                                        blurRadius: 35,
-                                                        offset: const Offset(
-                                                          0,
-                                                          15,
-                                                        ),
-                                                      ),
-                                                    ] : [],
+                                                    boxShadow: playing
+                                                        ? [
+                                                            BoxShadow(
+                                                              color: themeColor
+                                                                  .withValues(
+                                                                    alpha: 0.5,
+                                                                  ),
+                                                              blurRadius: 35,
+                                                              offset:
+                                                                  const Offset(
+                                                                    0,
+                                                                    15,
+                                                                  ),
+                                                            ),
+                                                          ]
+                                                        : [],
                                                   ),
                                                   child: ClipRRect(
                                                     borderRadius:
@@ -457,13 +483,19 @@ class FullPlayerModal extends StatelessWidget {
                                       ),
                                     ),
 
-                                    // 🎛️ CONTROLES BOTTOM DE CRISTAL ADAPTATIVOS
+                                    // --- SECCIÓN: CONTROLES ---
                                     Padding(
                                       padding: EdgeInsets.fromLTRB(
                                         30,
                                         0,
                                         30,
-                                        MediaQuery.of(context).padding.bottom > 0 ? MediaQuery.of(context).padding.bottom + 20 : 40,
+                                        MediaQuery.of(context).padding.bottom >
+                                                0
+                                            ? MediaQuery.of(
+                                                    context,
+                                                  ).padding.bottom +
+                                                  20
+                                            : 40,
                                       ),
                                       child: ValueListenableBuilder<AudioEngineType>(
                                         valueListenable:
@@ -776,7 +808,8 @@ class FullPlayerModal extends StatelessWidget {
                                                                 inactiveTrackColor:
                                                                     activeTextColor
                                                                         .withValues(
-                                                                          alpha: 0.15,
+                                                                          alpha:
+                                                                              0.15,
                                                                         ),
                                                               ),
                                                               child: Slider(
@@ -971,7 +1004,9 @@ class FullPlayerModal extends StatelessWidget {
                                                                                         "Minimalista Zen"
                                                                                     ? textColor
                                                                                     : safeThemeColor)
-                                                                                .withValues(alpha: 0.4),
+                                                                                .withValues(
+                                                                                  alpha: 0.4,
+                                                                                ),
                                                                         blurRadius:
                                                                             25,
                                                                         spreadRadius:
@@ -1072,7 +1107,9 @@ class FullPlayerModal extends StatelessWidget {
                                                             "Minimalista Zen"
                                                         ? textColor
                                                         : safeThemeColor
-                                                              .withValues(alpha: 0.8),
+                                                              .withValues(
+                                                                alpha: 0.8,
+                                                              ),
                                                     textColor: activeTextColor,
                                                   ),
                                                 ],
@@ -1170,10 +1207,11 @@ class _FloatingMiniPlayerState extends State<FloatingMiniPlayer> {
               onTapCancel: () => setState(() => _isPressed = false),
               onHorizontalDragEnd: (details) {
                 if (PlayerManager.activeEngine.value != AudioEngineType.radio) {
-                  if (details.primaryVelocity! < 0) {
+                  if ((details.primaryVelocity ?? 0) < 0) {
                     PlayerManager.playNext();
-                  } else if (details.primaryVelocity! > 0)
+                  } else if ((details.primaryVelocity ?? 0) > 0) {
                     PlayerManager.playPrevious();
+                  }
                 }
               },
               child: AnimatedScale(
@@ -1215,192 +1253,207 @@ class _FloatingMiniPlayerState extends State<FloatingMiniPlayer> {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              glassColor.withValues(alpha: isLightMode ? 0.75 : 0.45),
-                              glassColor.withValues(alpha: isLightMode ? 0.5 : 0.2),
+                              glassColor.withValues(
+                                alpha: isLightMode ? 0.75 : 0.45,
+                              ),
+                              glassColor.withValues(
+                                alpha: isLightMode ? 0.5 : 0.2,
+                              ),
                             ],
                           ),
                           border: Border.all(
-                            color: Colors.white
-                                .withValues(alpha: isLightMode ? 0.3 : 0.08),
+                            color: Colors.white.withValues(
+                              alpha: isLightMode ? 0.3 : 0.08,
+                            ),
                             width: 1.2,
                           ),
                         ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            child: Row(
-                              children: [
-                                Hero(
-                                  tag: 'cover_active',
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: ValueListenableBuilder<dynamic>(
-                                      valueListenable:
-                                          PlayerManager.currentArtwork,
-                                      builder: (c, art, _) => SizedBox(
-                                        width: 46,
-                                        height: 46,
-                                        child: AnimatedSwitcher(
-                                          duration: const Duration(
-                                            milliseconds: 500,
-                                          ),
-                                          child: HybridArtworkWidget(
-                                            key: ValueKey(
-                                              art?.toString() ?? 'empty',
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                              child: Row(
+                                children: [
+                                  Hero(
+                                    tag: 'cover_active',
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: ValueListenableBuilder<dynamic>(
+                                        valueListenable:
+                                            PlayerManager.currentArtwork,
+                                        builder: (c, art, _) => SizedBox(
+                                          width: 46,
+                                          height: 46,
+                                          child: AnimatedSwitcher(
+                                            duration: const Duration(
+                                              milliseconds: 500,
                                             ),
-                                            artworkData: art,
-                                            title: title,
-                                            artist: PlayerManager
-                                                .currentArtist
-                                                .value,
+                                            child: HybridArtworkWidget(
+                                              key: ValueKey(
+                                                art?.toString() ?? 'empty',
+                                              ),
+                                              artworkData: art,
+                                              title: title,
+                                              artist: PlayerManager
+                                                  .currentArtist
+                                                  .value,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 14,
-                                          color:
-                                              theme.textTheme.bodyLarge?.color,
-                                          letterSpacing: -0.3,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      ValueListenableBuilder<String>(
-                                        valueListenable:
-                                            PlayerManager.currentArtist,
-                                        builder: (c, artist, _) => Text(
-                                          artist,
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          title,
                                           maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 14,
                                             color: theme
                                                 .textTheme
-                                                .bodyMedium
+                                                .bodyLarge
                                                 ?.color,
+                                            letterSpacing: -0.3,
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                AnimatedPress(
-                                  onTap: () {
-                                    HapticFeedback.selectionClick();
-                                    BluetoothPanel.show(context);
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                    ),
-                                    child: Icon(
-                                      Icons.speaker_group_rounded,
-                                      color: theme.textTheme.bodyMedium?.color,
-                                      size: 22,
-                                    ),
-                                  ),
-                                ),
-                                ValueListenableBuilder<bool>(
-                                  valueListenable: PlayerManager.isPlaying,
-                                  builder: (c, playing, _) => AnimatedPress(
-                                    onTap: () {
-                                      HapticFeedback.mediumImpact();
-                                      PlayerManager.togglePlay();
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: themeColor.withValues(alpha: 0.15),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        playing
-                                            ? (PlayerManager
-                                                          .activeEngine
-                                                          .value ==
-                                                      AudioEngineType.radio
-                                                  ? Icons.stop_rounded
-                                                  : Icons.pause_rounded)
-                                            : Icons.play_arrow_rounded,
-                                        color: themeColor,
-                                        size: 26,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 5),
-                              ],
-                            ),
-                          ),
-                          ValueListenableBuilder<Duration>(
-                            valueListenable: PlayerManager.position,
-                            builder: (c, pos, _) {
-                              final dur = PlayerManager.duration.value;
-                              final progress = dur.inMilliseconds > 0
-                                  ? (pos.inMilliseconds / dur.inMilliseconds)
-                                        .clamp(0.0, 1.0)
-                                  : 0.0;
-                              return Container(
-                                height: 3,
-                                width: double.infinity,
-                                alignment: Alignment.centerLeft,
-                                decoration: BoxDecoration(
-                                  color: themeColor.withValues(alpha: 0.1),
-                                ),
-                                child: FractionallySizedBox(
-                                  widthFactor:
-                                      PlayerManager.activeEngine.value ==
-                                          AudioEngineType.radio
-                                      ? 1.0
-                                      : progress,
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.linearToEaseOut,
-                                    decoration: BoxDecoration(
-                                      color:
-                                          PlayerManager.activeEngine.value ==
-                                              AudioEngineType.radio
-                                          ? Colors.red
-                                          : themeColor,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color:
-                                              (PlayerManager
-                                                              .activeEngine
-                                                              .value ==
-                                                          AudioEngineType.radio
-                                                      ? Colors.red
-                                                      : themeColor)
-                                                  .withValues(alpha: 0.6),
-                                          blurRadius: 4,
+                                        const SizedBox(height: 2),
+                                        ValueListenableBuilder<String>(
+                                          valueListenable:
+                                              PlayerManager.currentArtist,
+                                          builder: (c, artist, _) => Text(
+                                            artist,
+                                            maxLines: 1,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                              color: theme
+                                                  .textTheme
+                                                  .bodyMedium
+                                                  ?.color,
+                                            ),
+                                          ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
+                                  AnimatedPress(
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      BluetoothPanel.show(context);
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                      ),
+                                      child: Icon(
+                                        Icons.speaker_group_rounded,
+                                        color:
+                                            theme.textTheme.bodyMedium?.color,
+                                        size: 22,
+                                      ),
+                                    ),
+                                  ),
+                                  ValueListenableBuilder<bool>(
+                                    valueListenable: PlayerManager.isPlaying,
+                                    builder: (c, playing, _) => AnimatedPress(
+                                      onTap: () {
+                                        HapticFeedback.mediumImpact();
+                                        PlayerManager.togglePlay();
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: themeColor.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          playing
+                                              ? (PlayerManager
+                                                            .activeEngine
+                                                            .value ==
+                                                        AudioEngineType.radio
+                                                    ? Icons.stop_rounded
+                                                    : Icons.pause_rounded)
+                                              : Icons.play_arrow_rounded,
+                                          color: themeColor,
+                                          size: 26,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                ],
+                              ),
+                            ),
+                            ValueListenableBuilder<Duration>(
+                              valueListenable: PlayerManager.position,
+                              builder: (c, pos, _) {
+                                final dur = PlayerManager.duration.value;
+                                final progress = dur.inMilliseconds > 0
+                                    ? (pos.inMilliseconds / dur.inMilliseconds)
+                                          .clamp(0.0, 1.0)
+                                    : 0.0;
+                                return Container(
+                                  height: 3,
+                                  width: double.infinity,
+                                  alignment: Alignment.centerLeft,
+                                  decoration: BoxDecoration(
+                                    color: themeColor.withValues(alpha: 0.1),
+                                  ),
+                                  child: FractionallySizedBox(
+                                    widthFactor:
+                                        PlayerManager.activeEngine.value ==
+                                            AudioEngineType.radio
+                                        ? 1.0
+                                        : progress,
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      curve: Curves.linearToEaseOut,
+                                      decoration: BoxDecoration(
+                                        color:
+                                            PlayerManager.activeEngine.value ==
+                                                AudioEngineType.radio
+                                            ? Colors.red
+                                            : themeColor,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                (PlayerManager
+                                                                .activeEngine
+                                                                .value ==
+                                                            AudioEngineType
+                                                                .radio
+                                                        ? Colors.red
+                                                        : themeColor)
+                                                    .withValues(alpha: 0.6),
+                                            blurRadius: 4,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1668,7 +1721,12 @@ class _AudioRouteSheetState extends State<AudioRouteSheet> {
           ),
         ],
       ),
-      padding: EdgeInsets.fromLTRB(25, 15, 25, bottomPadding > 0 ? bottomPadding + 20 : 40),
+      padding: EdgeInsets.fromLTRB(
+        25,
+        15,
+        25,
+        bottomPadding > 0 ? bottomPadding + 20 : 40,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1861,178 +1919,182 @@ class _InteractiveQueueViewState extends State<InteractiveQueueView> {
             filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
             child: Container(
               decoration: BoxDecoration(
-                color: theme.cardColor.withValues(alpha: 0.55), // ✨ Efecto Glassmorphism transparente
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                color: theme.cardColor.withValues(
+                  alpha: 0.55,
+                ), // ✨ Efecto Glassmorphism transparente
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
               ),
               child: Column(
                 children: [
                   const SizedBox(height: 15),
                   Container(
-            width: 40,
-            height: 5,
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(25.0),
-            child: Row(
-              children: [
-                Text(
-                  "A continuación",
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: theme.textTheme.bodyLarge?.color,
+                    width: 40,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                ),
-                const Spacer(),
-                ValueListenableBuilder<AudioEngineType>(
-                  valueListenable: PlayerManager.activeEngine,
-                  builder: (context, engine, _) {
-                    if (engine == AudioEngineType.local) {
-                      return Text(
-                        "${PlayerManager.playbackQueue.length} pistas",
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ValueListenableBuilder<AudioEngineType>(
-              valueListenable: PlayerManager.activeEngine,
-              builder: (context, engine, _) {
-                if (engine == AudioEngineType.spotify) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  Padding(
+                    padding: const EdgeInsets.all(25.0),
+                    child: Row(
                       children: [
-                        const Icon(
-                          Icons.speaker_group_rounded,
-                          color: Color(0xFF1DB954),
-                          size: 70,
-                        ),
-                        const SizedBox(height: 20),
                         Text(
-                          "Conectado a Spotify",
+                          "A continuación",
                           style: TextStyle(
-                            color: theme.textTheme.bodyLarge?.color,
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
+                            color: theme.textTheme.bodyLarge?.color,
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          "La cola de reproducción está siendo\ngestionada por la app de Spotify.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey),
+                        const Spacer(),
+                        ValueListenableBuilder<AudioEngineType>(
+                          valueListenable: PlayerManager.activeEngine,
+                          builder: (context, engine, _) {
+                            if (engine == AudioEngineType.local) {
+                              return Text(
+                                "${PlayerManager.playbackQueue.length} pistas",
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
                         ),
                       ],
                     ),
-                  );
-                }
-                if (engine == AudioEngineType.radio) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.radio_rounded,
-                          color: Colors.redAccent,
-                          size: 70,
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          "Transmisión en Vivo",
-                          style: TextStyle(
-                            color: theme.textTheme.bodyLarge?.color,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          "Las estaciones globales no\ntienen cola de reproducción.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
+                  ),
+                  Expanded(
+                    child: ValueListenableBuilder<AudioEngineType>(
+                      valueListenable: PlayerManager.activeEngine,
+                      builder: (context, engine, _) {
+                        if (engine == AudioEngineType.spotify) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.speaker_group_rounded,
+                                  color: Color(0xFF1DB954),
+                                  size: 70,
+                                ),
+                                const SizedBox(height: 20),
+                                Text(
+                                  "Conectado a Spotify",
+                                  style: TextStyle(
+                                    color: theme.textTheme.bodyLarge?.color,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                const Text(
+                                  "La cola de reproducción está siendo\ngestionada por la app de Spotify.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        if (engine == AudioEngineType.radio) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.radio_rounded,
+                                  color: Colors.redAccent,
+                                  size: 70,
+                                ),
+                                const SizedBox(height: 20),
+                                Text(
+                                  "Transmisión en Vivo",
+                                  style: TextStyle(
+                                    color: theme.textTheme.bodyLarge?.color,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                const Text(
+                                  "Las estaciones globales no\ntienen cola de reproducción.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        if (PlayerManager.playbackQueue.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              "La cola está vacía",
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          );
+                        }
+                        return ReorderableListView.builder(
+                          scrollController: scrollController,
+                          physics: const BouncingScrollPhysics(),
+                          padding: EdgeInsets.only(bottom: 100 + bottomPadding),
+                          itemCount: PlayerManager.playbackQueue.length,
+                          onReorder: (oldIndex, newIndex) {
+                            HapticFeedback.lightImpact();
+                            setState(() {
+                              PlayerManager.reorderQueue(oldIndex, newIndex);
+                            });
+                          },
+                          itemBuilder: (context, index) {
+                            final song = PlayerManager.playbackQueue[index];
+                            final bool isCurrent =
+                                PlayerManager.currentSong.value?.id == song.id;
+                            return ListTile(
+                              key: ValueKey(song.id),
+                              leading: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: SizedBox(
+                                  width: 45,
+                                  height: 45,
+                                  child: HybridArtworkWidget(
+                                    artworkData: song.id,
+                                    title: song.title,
+                                    artist: song.artist ?? "",
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                song.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: isCurrent
+                                      ? FontWeight.w900
+                                      : FontWeight.bold,
+                                  color: isCurrent
+                                      ? themeColor
+                                      : theme.textTheme.bodyLarge?.color,
+                                ),
+                              ),
+                              subtitle: Text(
+                                song.artist ?? "Desconocido",
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              trailing: const Icon(
+                                Icons.drag_handle_rounded,
+                                color: Colors.white24,
+                              ),
+                            );
+                          },
+                        );
+                      },
                     ),
-                  );
-                }
-                if (PlayerManager.playbackQueue.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      "La cola está vacía",
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  );
-                }
-                return ReorderableListView.builder(
-                  scrollController: scrollController, // ✨ Sincroniza la lista con el DraggableScrollableSheet
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.only(bottom: 100 + bottomPadding), // ✨ Flujo Edge-to-Edge y evita tapar el último item
-                  itemCount: PlayerManager.playbackQueue.length,
-                  onReorder: (oldIndex, newIndex) {
-                    HapticFeedback.lightImpact(); // ✨ Respuesta táctil premium al arrastrar
-                    setState(() {
-                      PlayerManager.reorderQueue(oldIndex, newIndex);
-                    });
-                  },
-                  itemBuilder: (context, index) {
-                    final song = PlayerManager.playbackQueue[index];
-                    final bool isCurrent =
-                        PlayerManager.currentSong.value?.id == song.id;
-                    return ListTile(
-                      key: ValueKey(song.id),
-                      leading: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: SizedBox(
-                          width: 45,
-                          height: 45,
-                          child: HybridArtworkWidget(
-                            artworkData: song.id,
-                            title: song.title,
-                            artist: song.artist ?? "",
-                          ),
-                        ),
-                      ),
-                      title: Text(
-                        song.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: isCurrent
-                              ? FontWeight.w900
-                              : FontWeight.bold,
-                          color: isCurrent
-                              ? themeColor
-                              : theme.textTheme.bodyLarge?.color,
-                        ),
-                      ),
-                      subtitle: Text(
-                        song.artist ?? "Desconocido",
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      trailing: const Icon(
-                        Icons.drag_handle_rounded,
-                        color: Colors.white24,
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+                  ),
+                ],
               ),
             ),
           ),
@@ -2086,7 +2148,12 @@ class _EqualizerProViewState extends State<EqualizerProView> {
           ),
         ],
       ),
-      padding: EdgeInsets.fromLTRB(25, 15, 25, bottomPadding > 0 ? bottomPadding + 10 : 20),
+      padding: EdgeInsets.fromLTRB(
+        25,
+        15,
+        25,
+        bottomPadding > 0 ? bottomPadding + 10 : 20,
+      ),
       child: Column(
         children: [
           Container(
@@ -2266,7 +2333,9 @@ class _VerticalEqFaderState extends State<_VerticalEqFader> {
             fontSize: _isDragging ? 14 : 12,
             fontWeight: FontWeight.bold,
           ),
-          child: Text("${(widget.band.centerFrequency / 1000).toStringAsFixed(0)}k"),
+          child: Text(
+            "${(widget.band.centerFrequency / 1000).toStringAsFixed(0)}k",
+          ),
         ),
         const SizedBox(height: 10),
         Expanded(
@@ -2286,7 +2355,9 @@ class _VerticalEqFaderState extends State<_VerticalEqFader> {
                       thumbShape: RoundSliderThumbShape(
                         enabledThumbRadius: _isDragging ? 14 : 10,
                       ),
-                      overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
+                      overlayShape: const RoundSliderOverlayShape(
+                        overlayRadius: 24,
+                      ),
                     ),
                     child: Slider(
                       value: currentGain,
@@ -2316,7 +2387,9 @@ class _VerticalEqFaderState extends State<_VerticalEqFader> {
         AnimatedDefaultTextStyle(
           duration: const Duration(milliseconds: 300),
           style: TextStyle(
-            color: _isDragging ? widget.themeColor.withValues(alpha: 0.5) : Colors.white24,
+            color: _isDragging
+                ? widget.themeColor.withValues(alpha: 0.5)
+                : Colors.white24,
             fontSize: 10,
             fontWeight: FontWeight.bold,
           ),
@@ -2340,7 +2413,8 @@ class _PremiumHorizontalFader extends StatefulWidget {
   });
 
   @override
-  State<_PremiumHorizontalFader> createState() => _PremiumHorizontalFaderState();
+  State<_PremiumHorizontalFader> createState() =>
+      _PremiumHorizontalFaderState();
 }
 
 class _PremiumHorizontalFaderState extends State<_PremiumHorizontalFader> {
@@ -2355,7 +2429,9 @@ class _PremiumHorizontalFaderState extends State<_PremiumHorizontalFader> {
       child: SliderTheme(
         data: SliderTheme.of(context).copyWith(
           trackHeight: _isDragging ? 8 : 4,
-          thumbShape: RoundSliderThumbShape(enabledThumbRadius: _isDragging ? 14 : 10),
+          thumbShape: RoundSliderThumbShape(
+            enabledThumbRadius: _isDragging ? 14 : 10,
+          ),
           overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
         ),
         child: Slider(

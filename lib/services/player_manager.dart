@@ -79,7 +79,6 @@ class PlayerManager {
 
   static final ValueNotifier<Color> currentThemeColor = ValueNotifier(
     const Color(0xFF2563EB), // ✨ Azul por defecto en lugar de Verde Spotify
-    _defaultThemeColor,
   );
 
   // ✨ NUEVO: Permitir al usuario forzar un color (Rojo, Morado, Verde, Rosa, Amarillo)
@@ -124,7 +123,6 @@ class PlayerManager {
           activeEngine.value == AudioEngineType.local) {
         _updateDominantColorLocal(currentSong.value!);
       } else {
-        updateThemeColor(const Color(0xFF2563EB));
         updateThemeColor(_defaultThemeColor);
       }
     }

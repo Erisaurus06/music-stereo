@@ -114,7 +114,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                 title: "Música y Audio",
                 subtitle:
                     "Para encontrar y reproducir tus archivos MP3 locales.",
-                icon: Icons.folder_music_rounded,
+                icon: Icons.library_music_rounded,
                 status: _storageStatus,
                 onRequest: _requestStorage,
               ),

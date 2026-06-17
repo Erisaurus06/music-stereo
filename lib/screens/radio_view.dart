@@ -281,7 +281,7 @@ class _RadioViewState extends State<RadioView>
                 HapticFeedback.mediumImpact();
                 // Regresa al usuario a la primera pestaña de la App (Local) si implementas un PageController global
               },
-              icon: const Icon(Icons.folder_music_rounded),
+              icon: const Icon(Icons.library_music_rounded),
               label: const Text(
                 "Ir a Biblioteca Local",
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),

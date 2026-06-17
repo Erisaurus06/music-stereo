@@ -129,7 +129,9 @@ class HybridArtworkWidget extends StatelessWidget {
                   memCacheHeight: isFullSize ? 800 : 150,
                   placeholder: (c, u) => const ShimmerPlaceholder(),
                   errorWidget: (c, u, e) => Container(
-                    color: const Color(0xFF141416), // ✨ Fondo oscuro minimalista
+                    color: const Color(
+                      0xFF141416,
+                    ), // ✨ Fondo oscuro minimalista
                     child: Center(
                       child: Icon(
                         Icons.music_note_rounded,
@@ -258,7 +260,9 @@ class _ShimmerPlaceholderState extends State<ShimmerPlaceholder>
           child: child,
         );
       },
-      child: Container(color: Colors.white), // El lienzo base sobre el que pinta el Shader
+      child: Container(
+        color: Colors.white,
+      ), // El lienzo base sobre el que pinta el Shader
     );
   }
 }
@@ -442,7 +446,11 @@ class _ShimmerSkeletonItemState extends State<ShimmerSkeletonItem>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(width: double.infinity, height: 14, color: Colors.white),
+                  Container(
+                    width: double.infinity,
+                    height: 14,
+                    color: Colors.white,
+                  ),
                   const SizedBox(height: 10),
                   Container(width: 120, height: 10, color: Colors.white),
                 ],
@@ -450,7 +458,14 @@ class _ShimmerSkeletonItemState extends State<ShimmerSkeletonItem>
             ),
             const SizedBox(width: 20),
             // Ícono lateral
-            Container(width: 24, height: 24, decoration: const BoxShape.circle == BoxShape.circle ? const BoxDecoration(color: Colors.white, shape: BoxShape.circle) : null),
+            Container(
+              width: 24,
+              height: 24,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
           ],
         ),
       ),

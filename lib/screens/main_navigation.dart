@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:spotify_sdk/spotify_sdk.dart';
 import 'package:app_settings/app_settings.dart';
-
 import '../api_keys.dart';
 import '../services/player_manager.dart';
 import '../services/app_state.dart';
@@ -29,7 +28,7 @@ class _MainNavigationState extends State<MainNavigation> {
     LibraryView(),
     PomodoroView(),
     RadioView(),
-    SettingsProView(),
+    SettingsView(),
   ];
 
   @override

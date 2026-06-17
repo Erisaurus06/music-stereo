@@ -31,8 +31,15 @@ class RadioStation {
     );
   }
 
-  Object? toJson() {
-    return null;
+  Map<String, dynamic> toJson() {
+    return {
+      'stationuuid': id,
+      'name': name,
+      'url_resolved': url,
+      'favicon': favicon,
+      'tags': tags,
+      'country': country,
+    };
   }
 }
 
